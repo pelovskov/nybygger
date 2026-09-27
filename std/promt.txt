@@ -1,0 +1,1 @@
+Bring denne bygger i overensstemmelse med Builder-standard 1.1. Brug tjeklisten i afsnit 10 og Sidebyggeren som reference.

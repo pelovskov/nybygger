@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sidebygger</title>
+<title>Sidebygger · Bygger DC</title>
 <style>
   :root{
     --paper: #EDE7D8;
@@ -117,7 +117,7 @@
 
 <div class="topbar">
   <h1>Sidebygger</h1>
-  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.4</span>
+  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.3</span>
 </div>
 
 <div class="layout">
@@ -192,12 +192,6 @@
       <label for="location">Sted (valgfri)</label>
       <input type="text" id="location" placeholder="fx Roskilde, Danmark">
       <div class="hint">Udfylder automatisk <code>dc.coverage</code>.</div>
-    </div>
-
-    <div class="field">
-      <label for="shareImage">Webadresse til delingsbillede (valgfri)</label>
-      <input type="text" id="shareImage" placeholder="https://…/forside.jpg">
-      <div class="hint">Billederne inde i filen kan ikke læses af fx Facebook. Skal siden deles, så læg ét af billederne op som selvstændig fil og skriv adressen her.</div>
     </div>
 
     <div class="sectionhead">Billeder i toppen (maks 2)</div>
@@ -460,11 +454,9 @@
   </div>
 </div>
 <script>
-const BUILDER_VERSION = 1;   // tælles op ved formatændringer
-
 const state = {
   theme:'original',
-  eyebrow:'', title:'', subtitle:'', location:'', shareImage:'',
+  eyebrow:'', title:'', subtitle:'', location:'',
   top:[{data:null, caption:'', alt:''},{data:null, caption:'', alt:''}],
   audioTitle:'', audioData:null,
   factTitle:'', factText:'',
@@ -638,7 +630,6 @@ function stripMdToPlain(md, maxLen){
 
 function slugify(s, fallback){
   const out = (s || '').toLowerCase()
-    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   return out || fallback || '';
@@ -699,7 +690,7 @@ function mdToHtml(md, withIds){
       html += '<li>' + inlineMd(m[1]) + '</li>';
       continue;
     }
-    if ((m = line.match(/^&gt;\s?(.*)$/))){
+    if ((m = line.match(/^>\s?(.*)$/))){
       flushPara(); closeLists();
       html += '<blockquote>' + inlineMd(m[1]) + '</blockquote>';
       continue;
@@ -844,7 +835,7 @@ function buildPageHTML(s, isPreview){
   const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button class="save-btn" id="dlBtn">'
     + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
     + '<span>Gem filen</span></button></div>'
-    + '<p class="save-note">En artikelside. Gemmer hele siden som én fil på din egen computer - tekst, billeder og lyd følger med.</p>';
+    + '<p class="save-note">Gemmer hele siden som én fil på din egen computer - tekst, billeder og lyd følger med.</p>';
   const hasInfo = s.infoBtnText.trim() && s.infoContent.trim();
   const infoBtn = hasInfo ? '<button class="tool infotool" id="infoBtn">' + escapeHtml(s.infoBtnText.trim()) + '</button>' : '';
   const infoModal = hasInfo ? '<div class="overlay" id="infoModal" hidden><div class="modal">'
@@ -872,8 +863,8 @@ function buildPageHTML(s, isPreview){
     : '';
 
   const sourceData = {
-    format:'sidebygger-side', builderVersion:BUILDER_VERSION,
-    theme: s.theme, eyebrow: s.eyebrow, title: s.title, subtitle: s.subtitle, location: s.location, shareImage: s.shareImage,
+    format:'sidebygger-side', builderVersion:1,
+    theme: s.theme, eyebrow: s.eyebrow, title: s.title, subtitle: s.subtitle, location: s.location,
     topMeta: s.top.map(im => ({caption:im.caption, alt:im.alt, hasImage: !!im.data})),
     audioTitle: s.audioTitle,
     factTitle: s.factTitle, factText: s.factText,
@@ -887,9 +878,6 @@ function buildPageHTML(s, isPreview){
   };
 
   const ogDesc = stripMdToPlain(s.subtitle, 200) || stripMdToPlain(s.articleText, 200);
-  const shareUrl = (s.shareImage || '').trim();
-  const firstImg = s.top.concat(s.gallery).find(im => im.data);
-  const iconSrc = firstImg ? firstImg.data : '';
   const taellerBlock = (s.taellerBlock && !isPreview) ? '\n' + s.taellerBlock + '\n' : '';
 
   return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
@@ -899,8 +887,6 @@ function buildPageHTML(s, isPreview){
 + '<meta property="og:type" content="article">\n'
 + '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
 + (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
-+ (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
-+ (iconSrc ? '<link rel="icon" href="' + iconSrc + '">\n' : '')
 + (dcMeta ? dcMeta + '\n' : '')
 + '<script type="application/json" id="builder-source-data">' + JSON.stringify(sourceData) + '<\/script>\n'
 + '<style>\n'
@@ -978,11 +964,11 @@ function buildPageHTML(s, isPreview){
 + '.cta-btn{background:var(--accent); color:var(--on-accent); text-decoration:none; font-weight:700; font-size:1.02em; padding:14px 26px; border-radius:8px; box-shadow:0 3px 10px var(--shadow);}\n'
 + '.cta-btn:hover{background:var(--accent-dark);}\n'
 + '.save-wrap{display:flex; justify-content:center; margin:34px 0 6px;}\n'
-+ '.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); border-radius:999px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}\n'
++ '.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); border-radius:8px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer;}\n'
 + '.save-btn:hover{background:var(--accent); color:var(--on-accent);}\n'
 + '.save-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}\n'
 + '.save-btn svg{width:20px; height:20px;}\n'
-+ '.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px 0 0;}\n'
++ '.save-note{text-align:center; font-size:0.85em; color:var(--muted); margin:10px 0 0;}\n'
 + '.meta{margin:40px 0 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px; scroll-margin-top:78px;}\n'
 + '.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none;}\n'
 + '.meta summary::-webkit-details-marker{display:none;}\n'
@@ -1184,7 +1170,6 @@ function readForm(){
   state.title = $('title').value;
   state.subtitle = $('subtitle').value;
   state.location = $('location').value;
-  state.shareImage = $('shareImage').value;
   state.top[0].caption = $('top1caption').value; state.top[0].alt = $('top1alt').value;
   state.top[1].caption = $('top2caption').value; state.top[1].alt = $('top2alt').value;
   state.audioTitle = $('audioTitle').value;
@@ -1219,7 +1204,7 @@ function renderPreview(){
   $('previewFrame').srcdoc = buildPageHTML(state, true);
 }
 
-['eyebrowSelect','eyebrow','title','subtitle','location','shareImage','top1caption','top1alt','top2caption','top2alt',
+['eyebrowSelect','eyebrow','title','subtitle','location','top1caption','top1alt','top2caption','top2alt',
  'audioTitle','factTitle','factText','articleText',
  'gal1caption','gal1alt','gal1desc','gal2caption','gal2alt','gal2desc','gal3caption','gal3alt','gal3desc',
  'cta1text','cta1url','cta2text','cta2url','cta3text','cta3url',
@@ -1361,14 +1346,8 @@ $('loadPage').addEventListener('change', async (e) => {
       return;
     }
     const data = JSON.parse(dataScript.textContent);
-    if (data.format !== 'sidebygger-side'){
+    if (data.format && data.format !== 'sidebygger-side'){
       $('loadStatus').textContent = 'Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.';
-      $('loadStatus').className = 'status pending';
-      e.target.value = '';
-      return;
-    }
-    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION){
-      $('loadStatus').textContent = 'Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.';
       $('loadStatus').className = 'status pending';
       e.target.value = '';
       return;
@@ -1378,7 +1357,6 @@ $('loadPage').addEventListener('change', async (e) => {
     state.title = data.title || '';
     state.subtitle = data.subtitle || '';
     state.location = data.location || '';
-    state.shareImage = data.shareImage || '';
     state.audioTitle = data.audioTitle || '';
     state.factTitle = data.factTitle || '';
     state.factText = data.factText || '';
@@ -1432,7 +1410,6 @@ $('loadPage').addEventListener('change', async (e) => {
     setField('title', state.title);
     setField('subtitle', state.subtitle);
     setField('location', state.location);
-    setField('shareImage', state.shareImage);
     setField('audioTitle', state.audioTitle);
     setField('factTitle', state.factTitle);
     setField('factText', state.factText);
