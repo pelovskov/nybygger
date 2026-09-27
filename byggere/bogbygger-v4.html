@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bogbygger</title>
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } .preview-pane{ position:static; min-height:0; border-left:none; border-top:1px solid var(--line); } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .field .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none !important; letter-spacing:0 !important; font-size:14.5px !important; line-height:1.45; color:var(--ink) !important; min-height:28px; }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--rust); cursor:pointer; }
+  .check span strong{ font-weight:650; }
+  .field .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  input[type=text], textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  textarea.small{ min-height:96px; }
+  input[type=text]:focus, textarea:focus, select:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  button:focus-visible, summary:focus-visible, input[type=file]:focus-visible, .check input:focus-visible{ outline:2px solid var(--rust); outline-offset:2px; }
+  .theme-option:focus-within{ outline:2px solid var(--rust); outline-offset:2px; }
+  select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  .filebox{ border:1px dashed var(--line); border-radius:3px; padding:14px; background:#f7f3e7; font-size:14.5px; }
+  .filebox input{ font-size:14px; }
+  .filebox .status{ margin-top:9px; font-size:13.5px; color:var(--moss); font-weight:600; }
+  .filebox .status.pending{ color:#7A6522; }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+
+  .theme-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+  .theme-option{
+    flex:1; min-width:132px; position:relative; border:2px solid var(--line); border-radius:8px;
+    padding:12px 12px 11px; cursor:pointer; background:#fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .theme-option:hover{ border-color:#a89f89; }
+  .theme-option input{ position:absolute; top:11px; right:11px; width:19px; height:19px; margin:0; accent-color:var(--rust); cursor:pointer; }
+  .theme-option .swatches{ display:flex; gap:6px; margin-bottom:10px; }
+  .theme-option .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+  .theme-option .tname{ font-size:14.5px; font-weight:600; color:var(--ink); padding-right:22px; text-transform:none; letter-spacing:0; }
+  .theme-option.selected{ border-color:var(--theme-accent, var(--rust)); box-shadow: 0 0 0 2px var(--theme-accent, var(--rust)) inset, 0 2px 8px rgba(30,25,15,0.08); }
+
+  .sizebar{
+    border:1px solid var(--line); border-radius:4px; background:#f7f3e7;
+    padding:11px 14px; font-size:14px; color:var(--moss); margin-bottom:22px; font-weight:600;
+  }
+  .sizebar.warn{ background:#f7efd9; color:#7A6522; }
+  .sizebar.over{ background:#f4ded9; color:#7d2c1a; }
+
+  .generate-btn{
+    width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px;
+  }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4436; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+
+  details.dc{ border:1px solid var(--line); border-radius:4px; background:#f7f3e7; padding:14px 16px; margin-bottom:20px; }
+  details.dc summary{ cursor:pointer; font-size:14px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; padding:10px 0; }
+  details.dc summary::marker{ color:var(--rust); }
+  details.dc[open] summary{ margin-bottom:12px; }
+  details.dc .panel-sub{ font-size:13.5px; color:var(--hint); margin:0 0 16px; line-height:1.55; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 16px; }
+  .field-grid .field{ margin-bottom:16px; }
+  .field-grid label{ text-transform:none; letter-spacing:0; font-size:14px; }
+  .field-grid label .hint{ display:block; font-size:13px; color:var(--hint); font-weight:400; margin-top:3px; line-height:1.5; }
+  .meta-btn{
+    width:100%; padding:12px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px; min-height:44px;
+  }
+  .meta-btn:hover{ background:#f2ecdd; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:14px; font-weight:600; }
+  .phone-frame{ background:#fbf8ef; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 8px 24px rgba(30,25,15,0.10); }
+  #previewFrame{ width:100%; height:660px; border:none; border-radius:6px; background:#fbf8ef; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Bogbygger</h1>
+  <span>Lav en e-bog som én selvstændig fil med forside, kapitler og metadata · kører lokalt, ingen server · version 4.0</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <div class="field">
+      <label for="loadPage">Indlæs eksisterende bog (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="loadPage" accept=".html,text/html">
+        <div class="status" id="loadStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg en bog (.html), som er lavet med denne udgave af Bogbygger, for at hente den ind i formularen og rette den. Alt kommer med: tekst, forsidebillede, tema og Dublin Core-felter. Bøger fra ældre udgaver af Bogbygger kan ikke indlæses. De laves om ved at hente manuskriptet (.md-filen) ind igen.</div>
+    </div>
+
+    <div class="field">
+      <label>Tema</label>
+      <div class="theme-picker" id="themePicker">
+        <label class="theme-option" data-theme="original" style="--theme-accent:#9A4630">
+          <input type="radio" name="theme" value="original" checked>
+          <div class="swatches"><span class="swatch" style="background:#9A4630"></span><span class="swatch" style="background:#EDE7D8"></span></div>
+          <div class="tname">Oprindeligt</div>
+        </label>
+        <label class="theme-option" data-theme="historisk" style="--theme-accent:#385261">
+          <input type="radio" name="theme" value="historisk">
+          <div class="swatches"><span class="swatch" style="background:#385261"></span><span class="swatch" style="background:#6B7A5A"></span><span class="swatch" style="background:#F2F5F6"></span></div>
+          <div class="tname">Historisk Samfund</div>
+        </label>
+        <label class="theme-option" data-theme="lokalhistorisk2" style="--theme-accent:#9E2453">
+          <input type="radio" name="theme" value="lokalhistorisk2">
+          <div class="swatches"><span class="swatch" style="background:#9E2453"></span><span class="swatch" style="background:#FAF9F5"></span></div>
+          <div class="tname">Lokalhistorisk</div>
+        </label>
+        <label class="theme-option" data-theme="roedekors" style="--theme-accent:#E30A0B">
+          <input type="radio" name="theme" value="roedekors">
+          <div class="swatches"><span class="swatch" style="background:#E30A0B"></span><span class="swatch" style="background:#FFFFFF"></span></div>
+          <div class="tname">Røde Kors</div>
+        </label>
+        <label class="theme-option" data-theme="roskildetv" style="--theme-accent:#B03035">
+          <input type="radio" name="theme" value="roskildetv">
+          <div class="swatches"><span class="swatch" style="background:#B03035"></span><span class="swatch" style="background:conic-gradient(#4DB0E8 0% 17%, #3576BA 17% 33%, #8E2D62 33% 50%, #B03035 50% 67%, #E8803A 67% 83%, #EFAF45 83% 100%)"></span></div>
+          <div class="tname">Roskilde TV</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sectionhead">Bogens forside</div>
+
+    <div class="field">
+      <label for="label">Mærkat (valgfri)</label>
+      <input type="text" id="label" placeholder="fx Lokalhistorisk fortælling">
+      <div class="hint">En kort linje over titlen på forsiden.</div>
+    </div>
+
+    <div class="field">
+      <label for="title">Titel</label>
+      <input type="text" id="title" placeholder="fx Fællesbageriet i Roskilde">
+    </div>
+
+    <div class="field">
+      <label for="place">Sted (valgfri)</label>
+      <input type="text" id="place" placeholder="fx Roskilde, Syd for Banen">
+      <div class="hint">Vises på forsiden og udfylder automatisk <code>dc.coverage</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="description">Kort forklaring (valgfri)</label>
+      <textarea id="description" class="small" placeholder="En kort tekst om, hvad bogen handler om."></textarea>
+      <div class="hint">Vises på bogens forside og udfylder automatisk <code>dc.description</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="coverFile">Forsidebillede (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="coverFile" accept="image/*">
+        <div class="status" id="coverStatus">Intet billede valgt</div>
+      </div>
+      <div class="hint">Billedet skaleres automatisk ned til maks 1600 px og lægges ind i filen. Der er intet at indstille.</div>
+    </div>
+
+    <div class="field">
+      <label for="coverAlt">Alt-tekst til forsidebilledet</label>
+      <input type="text" id="coverAlt" placeholder="fx Bagerbutikken på hjørnet omkring 1950">
+      <div class="hint">Beskriv billedet med få ord til dem, der bruger skærmlæser. Står feltet tomt, bruges bogens titel.</div>
+    </div>
+
+    <div class="field">
+      <label for="shareImage">Webadresse til delingsbillede (valgfri)</label>
+      <input type="text" id="shareImage" placeholder="https://…/forside.jpg">
+      <div class="hint">Facebook og lignende kan ikke læse billedet inde i filen. Skal bogen deles, så læg forsidebilledet op som selvstændig fil og skriv adressen her.</div>
+    </div>
+
+    <div class="sectionhead">Manuskriptet</div>
+
+    <div class="field">
+      <label for="mdFile">Hent manuskript fra fil (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown,text/plain">
+        <div class="status" id="mdStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg en .md-fil. Har den oplysninger øverst mellem to linjer med <code>---</code> (fx <code>dc.creator: Poul Hansen</code>), udfyldes de tilsvarende tomme felter af sig selv.</div>
+    </div>
+
+    <div class="field">
+      <label for="manuscript">Bogens tekst</label>
+      <textarea id="manuscript" style="min-height:320px" placeholder="## Kapitel 1&#10;&#10;Her starter fortællingen …"></textarea>
+      <div class="hint">Hver linje der starter med <code>#</code> eller <code>##</code> begynder et nyt kapitel og kommer med i kapitellisten. Du kan også skrive <code>###</code> for en underoverskrift, <code>**fed**</code>, <code>*kursiv*</code>, <code>-</code> for punktliste, <code>1.</code> for nummereret liste, <code>&gt;</code> for citat, <code>[tekst](https://…)</code> for et link, <code>---</code> for en streg og <code>`kode`</code>. Tabeller og tegnede kasser kan ikke bruges. Skriv dem om til punktlister.</div>
+    </div>
+
+    <div class="field">
+      <label for="defaultMode">Visning når bogen åbnes</label>
+      <select id="defaultMode">
+        <option value="light" selected>Lys</option>
+        <option value="sepia">Sepia (gullig papirfarve)</option>
+        <option value="dark">Mørk</option>
+      </select>
+      <div class="hint">Læseren kan altid selv skifte visning og skriftstørrelse med knapperne øverst i bogen. Valget huskes til næste gang.</div>
+    </div>
+
+    <div class="sectionhead">Knapper i bunden (maks 3)</div>
+
+    <div class="field">
+      <div class="row2"><div><input type="text" id="cta1text" placeholder="Knaptekst — fx Læs mere om foreningen" aria-label="Knaptekst 1"></div><div><input type="text" id="cta1url" placeholder="https://..." aria-label="Webadresse 1"></div></div>
+    </div>
+    <div class="field">
+      <div class="row2"><div><input type="text" id="cta2text" placeholder="Knaptekst" aria-label="Knaptekst 2"></div><div><input type="text" id="cta2url" placeholder="https://..." aria-label="Webadresse 2"></div></div>
+    </div>
+    <div class="field">
+      <div class="row2"><div><input type="text" id="cta3text" placeholder="Knaptekst" aria-label="Knaptekst 3"></div><div><input type="text" id="cta3url" placeholder="https://..." aria-label="Webadresse 3"></div></div>
+    </div>
+    <div class="hint" style="margin:-8px 0 22px; font-size:13.5px; color:var(--hint); line-height:1.55">Brug hele webadresser med <code>https://</code> foran. Så virker knapperne også, når filen bliver flyttet eller sendt videre. En knap vises kun, når både tekst og adresse er udfyldt.</div>
+
+    <div class="sectionhead">Knapper øverst</div>
+
+    <div class="field">
+      <label for="homeMode">Hjem-knap øverst (valgfri)</label>
+      <select id="homeMode">
+        <option value="auto" selected>Automatisk — vises kun når filen er del af en app eller samling</option>
+        <option value="always">Altid vist</option>
+        <option value="never">Aldrig vist</option>
+      </select>
+      <div class="row2" style="margin-top:10px">
+        <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem" aria-label="Tekst på hjem-knappen"></div>
+        <div><input type="text" id="homeUrl" placeholder="index.html" aria-label="Adresse for hjem-knappen"></div>
+      </div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+    </div>
+
+    <div class="field">
+      <label>Nederst i den færdige bog</label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="visGem" checked>
+          <span>Vis knappen <strong>Gem filen</strong></span></label>
+        <label class="check"><input type="checkbox" id="visOmFil" checked>
+          <span>Vis den foldede liste <strong>Om denne fil</strong></span></label>
+      </div>
+      <div class="hint">Slår du dem fra, forsvinder de kun fra den synlige side. Dublin Core-oplysningerne følger stadig med som skjulte meta-felter i toppen af filen, så bogen kan findes og identificeres senere.</div>
+    </div>
+
+    <details class="dc" id="dcDetails">
+      <summary>Dublin Core-metadata</summary>
+      <p class="panel-sub">De 15 felter følger med ind i den færdige bog — både som skjulte oplysninger i toppen og som en foldet liste nederst. Det er dem, der gør bogen mulig at finde igen om mange år. Alle felter er valgfrie.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="dcTitle">Titel <span class="hint">dc.title — udfyldes automatisk fra titlen</span></label>
+          <input type="text" id="dcTitle">
+        </div>
+        <div class="field">
+          <label for="dcCreator">Ophav / skaber <span class="hint">dc.creator — den der har skrevet bogen</span></label>
+          <input type="text" id="dcCreator" placeholder="F.eks. Poul Hansen">
+        </div>
+        <div class="field">
+          <label for="dcSubject">Emne / nøgleord <span class="hint">dc.subject — adskil med semikolon. Udgiveren sættes selv forrest</span></label>
+          <input type="text" id="dcSubject" placeholder="Fællesbageriet; brød; andelsbevægelsen">
+        </div>
+        <div class="field">
+          <label for="dcDescription">Beskrivelse <span class="hint">dc.description — udfyldes automatisk fra den korte forklaring</span></label>
+          <input type="text" id="dcDescription">
+        </div>
+        <div class="field">
+          <label for="dcPublisher">Udgiver / område <span class="hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset</span></label>
+          <select id="dcPublisher">
+            <option value="">(ikke valgt)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcContributor">Bidragyder <span class="hint">dc.contributor — den der har redigeret, fotograferet eller registreret</span></label>
+          <input type="text" id="dcContributor">
+        </div>
+        <div class="field">
+          <label for="dcDate">Dato <span class="hint">dc.date — helst ÅÅÅÅ-MM-DD, men fx "ca. 1955" er også i orden</span></label>
+          <input type="text" id="dcDate" placeholder="2026-09-27">
+        </div>
+        <div class="field">
+          <label for="dcType">Type <span class="hint">dc.type — DCMI-typeordforråd</span></label>
+          <select id="dcType">
+            <option value="Text" selected>Text</option>
+            <option value="Image">Image</option>
+            <option value="Sound">Sound</option>
+            <option value="MovingImage">MovingImage</option>
+            <option value="InteractiveResource">InteractiveResource</option>
+            <option value="Collection">Collection</option>
+            <option value="Event">Event</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcFormat">Format <span class="hint">dc.format — filens tekniske format</span></label>
+          <input type="text" id="dcFormat" value="text/html">
+        </div>
+        <div class="field">
+          <label for="dcIdentifier">Identifikator <span class="hint">dc.identifier — foreslås automatisk ud fra område og titel</span></label>
+          <input type="text" id="dcIdentifier" placeholder="F.eks. SFB-bog-faellesbageriet-2026">
+        </div>
+        <div class="field">
+          <label for="dcSource">Kilde <span class="hint">dc.source — hvor oplysningerne stammer fra</span></label>
+          <input type="text" id="dcSource" placeholder="F.eks. Lokalarkivet i Roskilde">
+        </div>
+        <div class="field">
+          <label for="dcLanguage">Sprog <span class="hint">dc.language — sprogkode, fx da</span></label>
+          <input type="text" id="dcLanguage" value="da">
+        </div>
+        <div class="field">
+          <label for="dcRelation">Relation <span class="hint">dc.relation — beslægtet materiale, fx en lydbog eller et billedalbum</span></label>
+          <input type="text" id="dcRelation">
+        </div>
+        <div class="field">
+          <label for="dcCoverage">Dækning <span class="hint">dc.coverage — sted og/eller periode, udfyldes automatisk fra Sted</span></label>
+          <input type="text" id="dcCoverage" placeholder="Roskilde; 1900-1970">
+        </div>
+        <div class="field">
+          <label for="dcRights">Rettigheder <span class="hint">dc.rights — ophavsret og vilkår for brug</span></label>
+          <input type="text" id="dcRights" placeholder="F.eks. © Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse.">
+        </div>
+      </div>
+      <button class="meta-btn" id="metaJsonBtn" type="button">Gem metadata som separat JSON-fil</button>
+    </details>
+
+    <div class="sizebar" id="sizeBar">Indhold i filen: 0 KB</div>
+
+    <button class="generate-btn" id="generateBtn" type="button" disabled>Generér bog (.html)</button>
+    <div class="msg" id="msgBox" role="status"></div>
+
+  </div>
+
+  <div class="preview-pane">
+    <div class="label">Forhåndsvisning</div>
+    <div class="phone-frame">
+      <iframe id="previewFrame" title="Forhåndsvisning af den færdige bog"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+const BUILDER_VERSION = 4;   // tælles op ved formatændringer
+const FORMAT_NAME = 'ebog';
+
+const state = {
+  theme:'original',
+  label:'', title:'', place:'', description:'',
+  coverData:null, coverAlt:'', shareImage:'',
+  manuscript:'', defaultMode:'light',
+  ctas:[{text:'',url:''},{text:'',url:''},{text:'',url:''}],
+  homeMode:'auto', homeLabel:'', homeUrl:'',
+  visGem:true, visOmFil:true,
+  taellerBlock:''
+};
+
+/* ---------- Dublin Core ---------- */
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav / skaber', subject:'Emne / nøgleord', description:'Beskrivelse',
+  publisher:'Udgiver / område', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+// Udgivere / områder til dc.publisher og deres præfiks til dc.identifier.
+// Kopieret uændret fra Builder-standard afsnit 4.1.
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+// Ældre navne, der rettes til det gældende navn ved indlæsning (afsnit 4.1).
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+const AREA_PREFIX = {};
+PUBLISHERS.forEach(p => { AREA_PREFIX[p.name] = p.prefix; });
+
+(function fillPublisherSelect(){
+  const sel = document.getElementById('dcPublisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+function ensurePublisherOption(v){
+  const sel = document.getElementById('dcPublisher');
+  if (!v || Array.from(sel.options).some(o => o.value === v)) return;
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v + ' (ikke på listen — vælg en udgiver)';
+  sel.appendChild(o);
+}
+
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+function dcInputId(key){ return 'dc' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+// Felter der spejler formularen, indtil man selv skriver i dem.
+const dcTouched = { title:false, description:false, coverage:false, identifier:false };
+
+/* ---------- Temaer (kopieret uændret fra Builder-standard afsnit 3) ---------- */
+
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+
+// Sepia er Bogbyggerens egen ekstra læsevisning (appspecifik). Accenten kommer fra temaet.
+const SEPIA = {
+  paper:'#F1E7D0', surface:'#F8F0DE', ink:'#2B2116', body:'#3A2E1E',
+  muted:'#5E4F38', line:'#D6C4A2', quote:'#4A3C28'
+};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Hjælpefunktioner ---------- */
+
+function luminance(hex){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  return [(n>>16)&255, (n>>8)&255, n&255].map(v => {
+    v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+}
+function contrast(a, b){
+  const la = luminance(a), lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+// Accentfarve til tekst: temaets accent, hvis den har kontrast nok (4,5:1) mod baggrunden,
+// ellers den mørke accent, ellers tekstfarven.
+function readableAccent(t, bg, fallback){
+  if (contrast(t.accent, bg) >= 4.5) return t.accent;
+  if (contrast(t.accentDark, bg) >= 4.5) return t.accentDark;
+  return fallback;
+}
+
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Kunne ikke læse billedfilen'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Kunne ikke afkode billedet'));
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w >= h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else if (h > w && h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(str){
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripMdToPlain(md, maxLen){
+  let t = (md || '')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen - 1).trim() + '…';
+  return t;
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+/* ---------- Markdown (Builder-standard afsnit 6) ----------
+   Teksten escapes først; reglerne matcher derfor den escapede tekst (citat = &gt;). */
+
+function inlineMd(s){
+  const codes = [];
+  s = s.replace(/`([^`]+)`/g, (m, c) => { codes.push(c); return '\u0000' + (codes.length - 1) + '\u0000'; });
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*\w])\*(?!\s)(.+?)\*(?!\*)/g, '$1<em>$2</em>');
+  s = s.replace(/\u0000(\d+)\u0000/g, (m, i) => '<code>' + codes[+i] + '</code>');
+  return s;
+}
+
+function mdToHtml(md){
+  if (!md) return '';
+  const lines = escapeHtml(md).replace(/\r\n?/g, '\n').split('\n');
+  let html = '', inUl = false, inOl = false, para = [], quote = [];
+
+  function flushPara(){ if (para.length){ html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } }
+  function flushQuote(){ if (quote.length){ html += '<blockquote><p>' + inlineMd(quote.join('<br>')) + '</p></blockquote>'; quote = []; } }
+  function closeLists(){
+    if (inUl){ html += '</ul>'; inUl = false; }
+    if (inOl){ html += '</ol>'; inOl = false; }
+  }
+  function flushAll(){ flushPara(); flushQuote(); closeLists(); }
+
+  for (const line of lines){
+    let m;
+    if (/^\s*$/.test(line)){ flushAll(); continue; }
+    if ((m = line.match(/^\s*&gt;\s?(.*)$/))){
+      flushPara(); closeLists(); quote.push(m[1]); continue;
+    }
+    flushQuote();
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)){ flushAll(); html += '<hr>'; continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))){
+      flushAll();
+      const level = m[1].length <= 2 ? 2 : m[1].length;   // et enkelt # giver også <h2>
+      html += '<h' + level + '>' + inlineMd(m[2].trim()) + '</h' + level + '>';
+      continue;
+    }
+    if ((m = line.match(/^\s*[-*]\s+(.*)$/))){
+      flushPara();
+      if (inOl){ html += '</ol>'; inOl = false; }
+      if (!inUl){ html += '<ul>'; inUl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^\s*\d+\.\s+(.*)$/))){
+      flushPara();
+      if (inUl){ html += '</ul>'; inUl = false; }
+      if (!inOl){ html += '<ol>'; inOl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    closeLists();
+    para.push(line);
+  }
+  flushAll();
+  return html;
+}
+
+/* ---------- Frontmatter og kapitler ---------- */
+
+function extractFrontmatter(md){
+  const src = String(md || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  const m = src.match(/^---\s*\n([\s\S]*?)\n---\s*(\n|$)/);
+  if (!m) return { fm:{}, body:src };
+  const fm = {};
+  m[1].split('\n').forEach(l => {
+    const mm = l.match(/^\s*([\w.]+)\s*:\s*(.*)$/);
+    if (mm) fm[mm[1].toLowerCase()] = mm[2].trim().replace(/^["']|["']$/g, '');
+  });
+  return { fm:fm, body:src.slice(m[0].length) };
+}
+
+// Hver linje med # eller ## starter et nyt kapitel.
+function splitChapters(body){
+  const chapters = [];
+  let current = null;
+  String(body || '').split('\n').forEach(line => {
+    const h = line.match(/^#{1,2}\s+(.*)$/);
+    if (h){
+      if (current) chapters.push(current);
+      current = { title: stripMdToPlain(h[1], 80), md: line + '\n' };
+    } else {
+      if (!current) current = { title: null, md: '' };
+      current.md += line + '\n';
+    }
+  });
+  if (current) chapters.push(current);
+  const out = chapters.filter(c => c.title !== null || c.md.trim());
+  if (out.length && out[0].title === null) out[0].title = 'Indledning';
+  return out;
+}
+
+/* ---------- Dublin Core: indsamling og automatik ---------- */
+
+function collectDublinCore(){
+  const dc = {};
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    const val = el ? el.value.trim() : '';
+    if (val) dc[key] = val;
+  });
+  // Udgiveren står som første emneord (afsnit 4.1).
+  if (dc.publisher){
+    const parts = (dc.subject || '').split(';').map(s => s.trim()).filter(Boolean)
+      .map(p => { const n = normalizePublisher(p); return AREA_PREFIX[n] ? n : p; })
+      .filter(p => p !== dc.publisher && !AREA_PREFIX[p]);
+    dc.subject = [dc.publisher].concat(parts).join('; ');
+  }
+  return dc;
+}
+
+function syncAutoDc(){
+  if (!dcTouched.title) $('dcTitle').value = state.title.trim();
+  if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.description, 300);
+  if (!dcTouched.coverage) $('dcCoverage').value = state.place.trim();
+  if (!dcTouched.identifier){
+    const prefix = AREA_PREFIX[$('dcPublisher').value];
+    const name = slugify(state.title, '');
+    const year = new Date().getFullYear();
+    $('dcIdentifier').value = (prefix && name) ? (prefix + '-bog-' + name + '-' + year) : '';
+  }
+}
+
+function buildDcMetaTags(dc){
+  const lines = [];
+  DC_FIELDS.forEach(key => {
+    if (!dc[key]) return;
+    if (key === 'subject'){
+      dc[key].split(';').forEach(part => {
+        const v = part.trim();
+        if (v) lines.push('<meta name="DC.subject" content="' + escapeHtml(v) + '">');
+      });
+    } else {
+      lines.push('<meta name="DC.' + key + '" content="' + escapeHtml(dc[key]) + '">');
+    }
+  });
+  return '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">' + (lines.length ? '\n' + lines.join('\n') : '');
+}
+
+function buildDcSection(dc){
+  const rows = DC_FIELDS
+    .filter(key => dc[key])
+    .map(key => '<div class="meta-row"><dt>' + DC_LABELS[key] + ' <span class="dc-tag">dc.' + key + '</span></dt><dd>' + escapeHtml(dc[key]) + '</dd></div>');
+  if (!rows.length) return '';
+  return '<details class="meta" id="omfilen">'
+    + '<summary><span>Om denne fil</span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+    + '<dl class="meta-list">' + rows.join('') + '</dl>'
+    + '</details>';
+}
+
+/* ---------- Den færdige bog ---------- */
+
+function buildBookHTML(s, isPreview){
+  const t = THEMES[s.theme] || THEMES.original;
+  const dc = collectDublinCore();
+  const dcMeta = buildDcMetaTags(dc);
+  const dcBlock = (s.visOmFil === false) ? '' : buildDcSection(dc);
+  const pageLang = (dc.language || 'da').trim() || 'da';
+  const pageTitle = s.title || 'Bog';
+  const safeName = slugify(s.title, 'bog');
+  const defMode = (s.defaultMode === 'sepia' || s.defaultMode === 'dark') ? s.defaultMode : 'light';
+
+  const parsed = extractFrontmatter(s.manuscript);
+  const chapters = splitChapters(parsed.body);
+
+  // Hjem-knap (afsnit 5.3) — samme opførsel som i Sidebyggeren.
+  const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
+  const homeLabel = (s.homeLabel && s.homeLabel.trim()) ? s.homeLabel.trim() : 'Hjem';
+  const homeUrl = (s.homeUrl && s.homeUrl.trim()) ? s.homeUrl.trim() : 'index.html';
+  const homeVisible = homeMode === 'always' || (isPreview && homeMode !== 'never');
+  const homeBlock = homeMode === 'never' ? '' :
+    '<div class="homewrap' + (homeVisible ? ' show' : '') + '" id="topbar" data-mode="' + homeMode + '">'
+    + '<a class="home-btn" id="homeBtn" href="' + escapeHtml(homeUrl) + '">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>'
+    + '<span>' + escapeHtml(homeLabel) + '</span></a></div>';
+
+  const coverAlt = (s.coverAlt && s.coverAlt.trim()) ? s.coverAlt.trim() : pageTitle;
+  const subjectPills = (dc.subject || '').split(';').map(x => x.trim()).filter(Boolean)
+    .map(x => '<span class="pill">' + escapeHtml(x) + '</span>').join(' ');
+  const colophon = [dc.publisher, dc.date].filter(Boolean).map(escapeHtml).join(' · ');
+
+  const titlePage = '<section class="titlepage" id="forside">'
+    + (s.coverData ? '<img class="cover-img" src="' + s.coverData + '" alt="' + escapeHtml(coverAlt) + '">' : '')
+    + (s.label ? '<p class="kicker">' + escapeHtml(s.label) + '</p>' : '')
+    + '<h1>' + escapeHtml(pageTitle) + '</h1>'
+    + (dc.creator ? '<p class="byline">af ' + escapeHtml(dc.creator) + '</p>' : '')
+    + (s.place ? '<p class="place">' + escapeHtml(s.place) + '</p>' : '')
+    + (s.description ? '<div class="blurb">' + mdToHtml(s.description) + '</div>' : '')
+    + (subjectPills ? '<p class="pills">' + subjectPills + '</p>' : '')
+    + (chapters.length ? '<button type="button" id="startReading" class="start-btn">Start læsning</button>' : '')
+    + (colophon ? '<p class="colophon">' + colophon + '</p>' : '')
+    + '</section>';
+
+  const chaptersHtml = chapters.map((ch, i) =>
+    '<section class="chapter" id="kapitel-' + (i+1) + '">' + mdToHtml(ch.md) + '</section>').join('\n');
+
+  const ctas = s.ctas.filter(c => c.text.trim() && c.url.trim());
+  const ctaBlock = ctas.length ? '<div class="cta-wrap">'
+    + ctas.map(c => '<a class="cta-btn" href="' + escapeHtml(c.url.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(c.text.trim()) + '</a>').join('')
+    + '</div>' : '';
+
+  const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button type="button" class="save-btn" id="dlBtn">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
+    + '<span>Gem filen</span></button></div>'
+    + '<p class="save-note">En e-bog. Gemmer hele bogen som én fil på din egen computer - tekst og forsidebillede følger med.</p>';
+
+  const menuItems = [{href:'#forside', label:'Forside'}];
+  chapters.forEach((ch, i) => menuItems.push({href:'#kapitel-' + (i+1), label: ch.title || ('Kapitel ' + (i+1))}));
+  if (dcBlock) menuItems.push({href:'#omfilen', label:'Om denne fil'});
+  const menuBlock = '<nav class="menu" id="menu" aria-label="Kapitler" hidden>'
+    + menuItems.map(m => '<a href="' + m.href + '">' + escapeHtml(m.label) + '</a>').join('') + '</nav>';
+
+  const footParts = [];
+  if (dc.creator) footParts.push(escapeHtml(dc.creator));
+  if (dc.publisher) footParts.push(escapeHtml(dc.publisher));
+  const year = (dc.date && dc.date.match(/\d{4}/)) ? dc.date.match(/\d{4}/)[0] : String(new Date().getFullYear());
+  const footBlock = footParts.length
+    ? '<footer class="site-foot"><p>' + footParts.join(' · ') + ' · ' + year + '</p></footer>'
+    : '';
+
+  const sourceData = {
+    format: FORMAT_NAME, builderVersion: BUILDER_VERSION,
+    theme: s.theme,
+    label: s.label, title: s.title, place: s.place, description: s.description,
+    coverAlt: s.coverAlt, hasCover: !!s.coverData, shareImage: s.shareImage,
+    manuscript: s.manuscript, defaultMode: defMode,
+    ctas: s.ctas,
+    homeMode: homeMode, homeLabel: s.homeLabel, homeUrl: s.homeUrl,
+    visGem: s.visGem !== false, visOmFil: s.visOmFil !== false,
+    dublinCore: dc
+  };
+  // "<" skrives som \u003c, så en tekst med en script-slutmarkør ikke kan ødelægge filen.
+  const sourceJson = JSON.stringify(sourceData).replace(/</g, '\\u003c');
+
+  const ogDesc = stripMdToPlain(s.description, 200) || stripMdToPlain(parsed.body, 200);
+  const shareUrl = (s.shareImage || '').trim();
+  const taellerBlock = (s.taellerBlock && !isPreview) ? '\n' + s.taellerBlock + '\n' : '';
+
+  const accLight = readableAccent(t, t.paper, t.ink);
+  const accSepia = readableAccent(t, SEPIA.paper, SEPIA.ink);
+  const accDark = readableAccent(t, t.dPaper, t.dInk);
+  const bodyClass = defMode === 'light' ? '' : ' class="' + defMode + '"';
+
+  return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
++ '<meta charset="UTF-8">\n'
++ '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
++ '<title>' + escapeHtml(pageTitle) + '</title>\n'
++ '<meta property="og:type" content="book">\n'
++ '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
++ (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
++ (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
++ (s.coverData ? '<link rel="icon" href="' + s.coverData + '">\n' : '')
++ dcMeta + '\n'
++ '<script type="application/json" id="builder-source-data">' + sourceJson + '<\/script>\n'
++ '<style>\n'
++ ':root{\n'
++ '  --accent:' + t.accent + '; --accent-dark:' + t.accentDark + '; --on-accent:' + t.onAccent + ';\n'
++ '  --paper:' + t.paper + '; --surface:' + t.surface + '; --ink:' + t.ink + '; --body:' + t.body + ';\n'
++ '  --muted:' + t.muted + '; --line:' + t.line + '; --quote:' + t.quote + ';\n'
++ '  --acc-text:' + accLight + ';\n'
++ '  --shadow:rgba(30,25,15,0.12);\n'
++ '  --sans: Verdana, Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;\n'
++ '  --fs:1;\n'
++ '}\n'
++ 'body.sepia{\n'
++ '  --paper:' + SEPIA.paper + '; --surface:' + SEPIA.surface + '; --ink:' + SEPIA.ink + '; --body:' + SEPIA.body + ';\n'
++ '  --muted:' + SEPIA.muted + '; --line:' + SEPIA.line + '; --quote:' + SEPIA.quote + ';\n'
++ '  --acc-text:' + accSepia + ';\n'
++ '}\n'
++ 'body.dark{\n'
++ '  --paper:' + t.dPaper + '; --surface:' + t.dSurface + '; --ink:' + t.dInk + '; --body:' + t.dBody + ';\n'
++ '  --muted:' + t.dMuted + '; --line:' + t.dLine + '; --quote:' + t.dQuote + ';\n'
++ '  --acc-text:' + accDark + ';\n'
++ '  --shadow:rgba(0,0,0,0.45);\n'
++ '}\n'
++ '*{box-sizing:border-box;}\n'
++ 'html{-webkit-text-size-adjust:100%;}\n'
++ 'body{margin:0; background:var(--paper); color:var(--body); font-family:var(--sans); line-height:1.7;}\n'
++ '.site-head{position:sticky; top:0; z-index:40; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px var(--shadow);}\n'
++ '.head-inner{max-width:1000px; margin:0 auto; padding:6px 8px; display:flex; flex-wrap:wrap; align-items:center; gap:4px; min-height:56px;}\n'
++ '.head-title{flex:1; min-width:0; font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.95;}\n'
++ '.head-tools{margin-left:auto; display:flex; align-items:center; gap:0; flex-wrap:nowrap;}\n'
++ '.tool{background:transparent; border:none; color:var(--on-accent); cursor:pointer; font-family:var(--sans); font-size:16px; font-weight:700; padding:8px 7px; border-radius:6px; line-height:1; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:7px;}\n'
++ '.tool:hover{background:rgba(255,255,255,0.16);}\n'
++ '.tool:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ '.tool svg{width:22px; height:22px; display:block;}\n'
++ '.tool.small{font-size:14px;}\n'
++ '.tool[aria-pressed="true"]{background:rgba(255,255,255,0.22);}\n'
++ '.tool .tlabel{font-size:15px;}\n'
++ '@media (max-width:560px){ .tool .tlabel{display:none;} .head-title{display:none;} }\n'
++ '.homewrap{display:none;}\n'
++ '.homewrap.show{display:block;}\n'
++ '.home-btn{display:inline-flex; align-items:center; gap:7px; padding:6px 13px 6px 9px; min-height:44px; border-radius:999px; border:2px solid rgba(255,255,255,0.6); color:var(--on-accent); text-decoration:none; font-size:15.5px; font-weight:700;}\n'
++ '.home-btn svg{width:18px; height:18px;}\n'
++ '.home-btn:hover{background:rgba(255,255,255,0.16);}\n'
++ '.home-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ '.menu{background:var(--accent-dark); padding:6px 0 12px; max-height:70vh; overflow-y:auto;}\n'
++ '.menu a{display:block; max-width:1000px; margin:0 auto; padding:11px 18px; color:var(--on-accent); text-decoration:none; font-size:16.5px; border-bottom:1px solid rgba(255,255,255,0.12);}\n'
++ '.menu a:hover{background:rgba(255,255,255,0.12);}\n'
++ '.menu a[aria-current="true"]{font-weight:700; background:rgba(255,255,255,0.14); box-shadow:inset 4px 0 0 var(--on-accent);}\n'
++ '.menu a:focus-visible{outline:3px solid var(--on-accent); outline-offset:-3px;}\n'
++ 'main{max-width:42rem; margin:0 auto; padding:10px 18px 10px; font-size:calc(17.5px * var(--fs)); overflow-wrap:break-word;}\n'
++ '.titlepage{text-align:center; padding:2.4em 0 1.6em; scroll-margin-top:78px;}\n'
++ '.cover-img{max-width:min(78vw,340px); max-height:60vh; width:auto; height:auto; border-radius:6px; box-shadow:0 10px 30px var(--shadow); margin:0 auto 1.4em; display:block;}\n'
++ '.kicker{font-size:0.8em; letter-spacing:0.11em; text-transform:uppercase; font-weight:700; color:var(--acc-text); margin:0 0 .5em;}\n'
++ 'h1{font-size:1.9em; line-height:1.22; margin:0 0 .35em; color:var(--ink); font-weight:700; -webkit-hyphens:auto; hyphens:auto;}\n'
++ '@media (max-width:480px){ h1{font-size:1.5em;} }\n'
++ '.byline{color:var(--muted); font-style:italic; margin:0 0 .2em;}\n'
++ '.place{color:var(--muted); margin:0 0 1em; font-size:0.9em;}\n'
++ '.blurb{color:var(--body); line-height:1.6; max-width:34em; margin:0 auto 1.1em;}\n'
++ '.blurb p{margin:0 0 .6em;}\n'
++ '.blurb a{color:var(--acc-text);}\n'
++ '.pills{margin:0 0 1.4em;}\n'
++ '.pill{display:inline-block; border:1px solid var(--line); border-radius:999px; padding:.15em .8em; font-size:0.78em; color:var(--muted); margin:.15em;}\n'
++ '.start-btn{background:var(--accent); color:var(--on-accent); border:none; border-radius:8px; padding:.8em 1.6em; font-size:1em; font-weight:700; cursor:pointer; min-height:48px; font-family:var(--sans); box-shadow:0 3px 10px var(--shadow);}\n'
++ '.start-btn:hover{background:var(--accent-dark);}\n'
++ '.start-btn:focus-visible{outline:3px solid var(--acc-text); outline-offset:3px;}\n'
++ '.colophon{margin:1.8em 0 0; font-size:0.85em; color:var(--muted);}\n'
++ '.chapter{padding-top:2em; border-top:1px solid var(--line); margin-top:2em; scroll-margin-top:66px;}\n'
++ '.chapter h2{font-size:1.45em; line-height:1.28; color:var(--ink); margin:0 0 .8em; padding-left:.6em; border-left:5px solid var(--accent);}\n'
++ '.chapter h3{font-size:1.18em; color:var(--ink); margin:1.6em 0 .5em; line-height:1.35;}\n'
++ '.chapter h4{font-size:1.02em; color:var(--ink); margin:1.4em 0 .4em;}\n'
++ '.chapter p{margin:0 0 1.05em;}\n'
++ '.chapter ul, .chapter ol{margin:0 0 1.05em; padding-left:1.4em;}\n'
++ '.chapter li{margin-bottom:.4em;}\n'
++ '.chapter li::marker{color:var(--acc-text);}\n'
++ '.chapter a{color:var(--acc-text);}\n'
++ '.chapter blockquote{margin:1.2em 0; padding:.2em 0 .2em 1em; border-left:4px solid var(--accent); color:var(--quote); font-style:italic;}\n'
++ '.chapter blockquote p{margin:0;}\n'
++ '.chapter hr{border:none; border-top:1px solid var(--line); margin:2em 0;}\n'
++ 'code{background:var(--surface); border:1px solid var(--line); padding:.05em .35em; border-radius:4px; font-size:.9em;}\n'
++ '.cta-wrap{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:2.4em 0 .6em;}\n'
++ '.cta-btn{background:var(--accent); color:var(--on-accent); text-decoration:none; font-weight:700; font-size:1em; padding:.8em 1.5em; border-radius:8px; box-shadow:0 3px 10px var(--shadow); min-height:48px; display:inline-flex; align-items:center;}\n'
++ '.cta-btn:hover{background:var(--accent-dark);}\n'
++ '.cta-btn:focus-visible{outline:3px solid var(--acc-text); outline-offset:3px;}\n'
++ '.save-wrap{display:flex; justify-content:center; margin:2em 0 .4em;}\n'
++ '.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--acc-text); border:2px solid var(--acc-text); border-radius:999px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}\n'
++ '.save-btn:hover{background:var(--acc-text); color:var(--paper);}\n'
++ '.save-btn:focus-visible{outline:3px solid var(--acc-text); outline-offset:3px;}\n'
++ '.save-btn svg{width:20px; height:20px;}\n'
++ '.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px 0 0;}\n'
++ '.meta{margin:2.4em 0 .6em; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px; scroll-margin-top:78px;}\n'
++ '.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none; min-height:36px;}\n'
++ '.meta summary::-webkit-details-marker{display:none;}\n'
++ '.meta summary:focus-visible{outline:3px solid var(--acc-text); outline-offset:3px;}\n'
++ '.meta[open] summary{margin-bottom:12px;}\n'
++ '.meta[open] .chevron{transform:rotate(180deg);}\n'
++ '.meta-list{margin:0;}\n'
++ '.meta-row{padding:7px 0; border-top:1px solid var(--line);}\n'
++ '.meta-row dt{font-weight:700; color:var(--ink); font-size:0.88em;}\n'
++ '.meta-row dd{margin:2px 0 0; font-size:0.93em; color:var(--body);}\n'
++ '.dc-tag{font-weight:400; color:var(--muted); font-size:0.88em;}\n'
++ '.site-foot{margin-top:2.6em; background:var(--accent-dark); color:var(--on-accent);}\n'
++ '.site-foot p{max-width:42rem; margin:0 auto; padding:20px 18px 84px; text-align:center; font-size:14.5px;}\n'
++ '.pagenav{position:fixed; left:18px; bottom:18px; z-index:30; display:flex; flex-direction:column; gap:8px;}\n'
++ '.pagenav button{width:48px; height:48px; border-radius:50%; background:var(--surface); color:var(--ink); border:1px solid var(--line); box-shadow:0 2px 10px var(--shadow); cursor:pointer; display:flex; align-items:center; justify-content:center;}\n'
++ '.pagenav button svg{width:22px; height:22px;}\n'
++ '.pagenav button[disabled]{opacity:.35; cursor:default;}\n'
++ '.pagenav button:focus-visible{outline:3px solid var(--acc-text); outline-offset:2px;}\n'
++ '#toTop{position:fixed; right:18px; bottom:18px; z-index:30; background:var(--accent); color:var(--on-accent); border:none; border-radius:50%; width:48px; height:48px; cursor:pointer; box-shadow:0 4px 14px var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease;}\n'
++ '#toTop.show{opacity:1; pointer-events:auto;}\n'
++ '#toTop svg{width:22px; height:22px; margin:0 auto; display:block;}\n'
++ '#toTop:focus-visible{outline:3px solid var(--acc-text); outline-offset:3px;}\n'
++ '@media (prefers-reduced-motion: reduce){ *{transition:none !important; scroll-behavior:auto !important;} }\n'
++ '@media print{ .site-head, #toTop, .pagenav, .save-wrap, .save-note, .start-btn{display:none !important;} body{background:#fff;} .chapter{break-before:page;} }\n'
++ '</style>\n</head>\n<body' + bodyClass + ' data-default-mode="' + defMode + '">\n'
++ '<header class="site-head">\n<div class="head-inner">\n'
++ homeBlock
++ '<span class="head-title">' + escapeHtml(pageTitle) + '</span>'
++ '<div class="head-tools">'
++ '<button type="button" class="tool" id="menuBtn" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="tlabel">Kapitler</span></button>'
++ '<button type="button" class="tool small" id="fontDec" aria-label="Mindre skrift">-A</button>'
++ '<button type="button" class="tool" id="fontInc" aria-label="Større skrift">+A</button>'
++ '<button type="button" class="tool small" id="sepiaBtn" aria-pressed="false" aria-label="Sepia: gullig papirfarve">Sepia</button>'
++ '<button type="button" class="tool" id="darkBtn" aria-pressed="false" aria-label="Mørk baggrund"><svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 15.4A8.6 8.6 0 0 1 8.6 3.6a8.6 8.6 0 1 0 11.8 11.8z"/></svg>'
++ '<svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>'
++ '</div>\n</div>\n' + menuBlock + '</header>\n'
++ '<main id="top">\n'
++ titlePage + '\n'
++ chaptersHtml + '\n'
++ ctaBlock + saveBlock + dcBlock
++ '\n</main>\n' + footBlock
++ '<div class="pagenav" id="pagenav">'
++ '<button type="button" id="pagePrev" aria-label="Forrige skærmside"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14l5-5 5 5"/></svg></button>'
++ '<button type="button" id="pageNext" aria-label="Næste skærmside"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>'
++ '</div>\n'
++ '<button type="button" id="toTop" aria-label="Til toppen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/><path d="M6 5h12"/></svg></button>\n'
++ '<script>\n'
++ '(function(){\n'
++ '  var PREVIEW = ' + (isPreview ? 'true' : 'false') + ';\n'
++ '  var body = document.body, root = document.documentElement;\n'
++ '  var DEF = body.getAttribute("data-default-mode") || "light";\n'
++ '  var PREF_KEY = "ebog_visning", POS_KEY = "ebog_pos_" + ' + JSON.stringify(safeName) + ';\n'
++ '  function store(k, v){ if (PREVIEW) return; try { localStorage.setItem(k, v); } catch(e){} }\n'
++ '  function read(k){ if (PREVIEW) return null; try { return localStorage.getItem(k); } catch(e){ return null; } }\n'
++ '  /* --- Visning: lys, sepia eller mørk --- */\n'
++ '  var darkBtn = document.getElementById("darkBtn"), sepiaBtn = document.getElementById("sepiaBtn");\n'
++ '  function currentMode(){ return body.classList.contains("dark") ? "dark" : (body.classList.contains("sepia") ? "sepia" : "light"); }\n'
++ '  function showMode(m){\n'
++ '    body.classList.toggle("dark", m === "dark");\n'
++ '    body.classList.toggle("sepia", m === "sepia");\n'
++ '    darkBtn.setAttribute("aria-pressed", m === "dark" ? "true" : "false");\n'
++ '    sepiaBtn.setAttribute("aria-pressed", m === "sepia" ? "true" : "false");\n'
++ '    document.getElementById("iconMoon").style.display = m === "dark" ? "none" : "block";\n'
++ '    document.getElementById("iconSun").style.display = m === "dark" ? "block" : "none";\n'
++ '  }\n'
++ '  var fs = 1;\n'
++ '  function setFs(v, keep){ fs = Math.round(Math.min(1.7, Math.max(0.85, v)) * 100) / 100; root.style.setProperty("--fs", fs.toFixed(2)); if (!keep) store(PREF_KEY, JSON.stringify({mode:currentMode(), fs:fs})); updatePagenav(); }\n'
++ '  function setMode(m){ showMode(m); store(PREF_KEY, JSON.stringify({mode:m, fs:fs})); }\n'
++ '  darkBtn.addEventListener("click", function(){ setMode(currentMode() === "dark" ? "light" : "dark"); });\n'
++ '  sepiaBtn.addEventListener("click", function(){ setMode(currentMode() === "sepia" ? "light" : "sepia"); });\n'
++ '  document.getElementById("fontInc").addEventListener("click", function(){ setFs(fs + 0.1); });\n'
++ '  document.getElementById("fontDec").addEventListener("click", function(){ setFs(fs - 0.1); });\n'
++ '  /* --- Kapitelmenu --- */\n'
++ '  var menuBtn = document.getElementById("menuBtn"), menu = document.getElementById("menu");\n'
++ '  function closeMenu(){ menu.setAttribute("hidden",""); menuBtn.setAttribute("aria-expanded","false"); }\n'
++ '  menuBtn.addEventListener("click", function(){\n'
++ '    var open = menu.hasAttribute("hidden");\n'
++ '    if (open){ menu.removeAttribute("hidden"); markActive(); } else { menu.setAttribute("hidden",""); }\n'
++ '    menuBtn.setAttribute("aria-expanded", open ? "true" : "false");\n'
++ '  });\n'
++ '  menu.addEventListener("click", function(e){ if (e.target.tagName === "A") closeMenu(); });\n'
++ '  /* --- Start læsning --- */\n'
++ '  var startBtn = document.getElementById("startReading");\n'
++ '  if (startBtn) startBtn.addEventListener("click", function(){ var c = document.querySelector(".chapter"); if (c) c.scrollIntoView({behavior:"smooth", block:"start"}); });\n'
++ '  /* --- Bladring: én skærmfuld ad gangen --- */\n'
++ '  var pagePrev = document.getElementById("pagePrev"), pageNext = document.getElementById("pageNext");\n'
++ '  var reduce = false; try { reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}\n'
++ '  function pageScroll(dir){\n'
++ '    var step = Math.max(140, Math.round((window.innerHeight - 70) * 0.9));\n'
++ '    try { window.scrollBy({top:dir*step, left:0, behavior: reduce ? "auto" : "smooth"}); } catch(e){ window.scrollBy(0, dir*step); }\n'
++ '    setTimeout(updatePagenav, 500);\n'
++ '  }\n'
++ '  function updatePagenav(){\n'
++ '    if (!pagePrev) return;\n'
++ '    var y = window.pageYOffset, max = root.scrollHeight - window.innerHeight;\n'
++ '    pagePrev.disabled = y <= 4; pageNext.disabled = y >= max - 4;\n'
++ '  }\n'
++ '  pagePrev.addEventListener("click", function(){ pageScroll(-1); });\n'
++ '  pageNext.addEventListener("click", function(){ pageScroll(1); });\n'
++ '  document.addEventListener("keydown", function(e){\n'
++ '    if (e.key === "Escape"){ closeMenu(); return; }\n'
++ '    if (e.ctrlKey || e.metaKey || e.altKey) return;\n'
++ '    var t = e.target, tag = (t && t.tagName) ? t.tagName.toUpperCase() : "";\n'
++ '    if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;\n'
++ '    var space = e.key === " " || e.key === "Spacebar";\n'
++ '    var onControl = tag === "BUTTON" || tag === "A" || tag === "SUMMARY";\n'
++ '    if (e.key === "PageDown" || e.key === "ArrowRight" || (space && !e.shiftKey && !onControl)){ pageScroll(1); e.preventDefault(); }\n'
++ '    else if (e.key === "PageUp" || e.key === "ArrowLeft" || (space && e.shiftKey && !onControl)){ pageScroll(-1); e.preventDefault(); }\n'
++ '  });\n'
++ '  /* --- Op-pil --- */\n'
++ '  var toTop = document.getElementById("toTop");\n'
++ '  toTop.addEventListener("click", function(){ window.scrollTo({top:0, behavior: reduce ? "auto" : "smooth"}); });\n'
++ '  /* --- Aktivt kapitel og læsested --- */\n'
++ '  var chapters = Array.prototype.slice.call(document.querySelectorAll(".chapter"));\n'
++ '  var links = Array.prototype.slice.call(menu.querySelectorAll("a"));\n'
++ '  function currentChapter(){\n'
++ '    var found = null;\n'
++ '    for (var i = 0; i < chapters.length; i++){ if (chapters[i].getBoundingClientRect().top <= 120) found = chapters[i]; else break; }\n'
++ '    return found;\n'
++ '  }\n'
++ '  function markActive(){\n'
++ '    var ch = currentChapter(), id = ch ? "#" + ch.id : "#forside";\n'
++ '    links.forEach(function(a){ if (a.getAttribute("href") === id) a.setAttribute("aria-current","true"); else a.removeAttribute("aria-current"); });\n'
++ '  }\n'
++ '  var saveTimer;\n'
++ '  window.addEventListener("scroll", function(){\n'
++ '    toTop.classList.toggle("show", window.scrollY > 400);\n'
++ '    updatePagenav();\n'
++ '    clearTimeout(saveTimer);\n'
++ '    saveTimer = setTimeout(function(){\n'
++ '      markActive();\n'
++ '      if (PREVIEW) return;\n'
++ '      var ch = currentChapter();\n'
++ '      if (!ch || window.pageYOffset < 80){ try { localStorage.removeItem(POS_KEY); } catch(e){} return; }\n'
++ '      var top = ch.getBoundingClientRect().top + window.pageYOffset;\n'
++ '      var f = ch.offsetHeight > 0 ? (window.pageYOffset + 120 - top) / ch.offsetHeight : 0;\n'
++ '      store(POS_KEY, JSON.stringify({id:ch.id, frac:Math.min(0.98, Math.max(0, f))}));\n'
++ '    }, 200);\n'
++ '  }, {passive:true});\n'
++ '  window.addEventListener("resize", updatePagenav, {passive:true});\n'
++ '  /* --- Husk læserens valg og læsested (ikke i forhåndsvisningen) --- */\n'
++ '  var pref = null; try { pref = JSON.parse(read(PREF_KEY) || "null"); } catch(e){}\n'
++ '  showMode(pref && pref.mode ? pref.mode : DEF);\n'
++ '  if (pref && typeof pref.fs === "number") setFs(pref.fs, true);\n'
++ '  function restorePos(){\n'
++ '    var p = null; try { p = JSON.parse(read(POS_KEY) || "null"); } catch(e){}\n'
++ '    if (p && p.id){\n'
++ '      var el = document.getElementById(p.id);\n'
++ '      if (el){\n'
++ '        var frac = (typeof p.frac === "number" && isFinite(p.frac)) ? Math.min(0.98, Math.max(0, p.frac)) : 0;\n'
++ '        var top = el.getBoundingClientRect().top + window.pageYOffset;\n'
++ '        window.scrollTo(0, Math.max(0, Math.round(top + el.offsetHeight * frac - 120)));\n'
++ '      }\n'
++ '    }\n'
++ '    markActive(); updatePagenav();\n'
++ '  }\n'
++ '  if (document.readyState === "complete") setTimeout(restorePos, 30);\n'
++ '  else window.addEventListener("load", function(){ setTimeout(restorePos, 60); });\n'
++ '  /* --- Gem filen: en ren kopi af bogen, som den var da den blev lavet --- */\n'
++ '  var dlBtn = document.getElementById("dlBtn");\n'
++ '  if (dlBtn) dlBtn.addEventListener("click", function(){\n'
++ '    var bar2 = document.getElementById("topbar");\n'
++ '    if (bar2 && bar2.getAttribute("data-mode") !== "auto") bar2 = null;\n'
++ '    var barWasShown = bar2 && bar2.classList.contains("show");\n'
++ '    var modeWas = currentMode();\n'
++ '    var fsWas = root.style.getPropertyValue("--fs");\n'
++ '    var topWasShown = toTop.classList.contains("show");\n'
++ '    var menuWasOpen = !menu.hasAttribute("hidden");\n'
++ '    var current = links.filter(function(a){ return a.hasAttribute("aria-current"); });\n'
++ '    if (bar2) bar2.classList.remove("show");\n'
++ '    showMode(DEF);\n'
++ '    root.style.removeProperty("--fs");\n'
++ '    toTop.classList.remove("show");\n'
++ '    closeMenu();\n'
++ '    current.forEach(function(a){ a.removeAttribute("aria-current"); });\n'
++ '    pagePrev.disabled = false; pageNext.disabled = false;\n'
++ '    var full = "<!DOCTYPE html>\\n" + root.outerHTML;\n'
++ '    if (bar2 && barWasShown) bar2.classList.add("show");\n'
++ '    showMode(modeWas);\n'
++ '    if (fsWas) root.style.setProperty("--fs", fsWas);\n'
++ '    if (topWasShown) toTop.classList.add("show");\n'
++ '    if (menuWasOpen){ menu.removeAttribute("hidden"); menuBtn.setAttribute("aria-expanded","true"); }\n'
++ '    current.forEach(function(a){ a.setAttribute("aria-current","true"); });\n'
++ '    updatePagenav();\n'
++ '    try {\n'
++ '      var blob = new Blob([full], {type:"text/html"});\n'
++ '      var url = URL.createObjectURL(blob);\n'
++ '      var a = document.createElement("a");\n'
++ '      a.href = url; a.download = ' + JSON.stringify(safeName + '.html') + ';\n'
++ '      document.body.appendChild(a); a.click(); document.body.removeChild(a);\n'
++ '      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);\n'
++ '    } catch(e){ alert("Filen kunne ikke gemmes her i browseren."); }\n'
++ '  });\n'
++ '  /* --- Hjem-knappen: i "automatisk" vises den kun, hvis filen er del af noget større --- */\n'
++ '  var bar = document.getElementById("topbar");\n'
++ '  if (bar){\n'
++ '    var link = document.getElementById("homeBtn");\n'
++ '    var mode = ' + JSON.stringify(homeMode) + ';\n'
++ '    var target = ' + JSON.stringify(homeUrl) + ';\n'
++ '    function show(){ bar.classList.add("show"); }\n'
++ '    var fromUrl = null;\n'
++ '    try { var p = new URLSearchParams(location.search); fromUrl = p.get("hjem") || p.get("home"); } catch(e){}\n'
++ '    if (fromUrl){ target = fromUrl; }\n'
++ '    link.setAttribute("href", target);\n'
++ '    if (mode === "always" || fromUrl){ show(); }\n'
++ '    else if (mode === "auto"){\n'
++ '      var path = (location.pathname || "").toLowerCase();\n'
++ '      var isIndex = path.charAt(path.length-1) === "/" || path.indexOf("/index.html") === path.length - 11;\n'
++ '      if (!isIndex){\n'
++ '        var shown = false;\n'
++ '        try {\n'
++ '          if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); shown = true; }\n'
++ '        } catch(e){}\n'
++ '        if (!shown && navigator.standalone === true){ show(); shown = true; }\n'
++ '        if (!shown){\n'
++ '          try {\n'
++ '            if (document.referrer){\n'
++ '              var ref = new URL(document.referrer), here = new URL(location.href);\n'
++ '              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));\n'
++ '              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));\n'
++ '              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }\n'
++ '            }\n'
++ '          } catch(e){}\n'
++ '        }\n'
++ '        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){\n'
++ '          try { fetch(target, {method:"HEAD"}).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}\n'
++ '        }\n'
++ '      }\n'
++ '    }\n'
++ '  }\n'
++ '  markActive(); updatePagenav();\n'
++ '})();\n'
++ '<\/script>\n'
++ taellerBlock
++ '</body>\n</html>';
+}
+
+/* ---------- Forhåndsvisning, størrelse og knapper ---------- */
+
+function totalBytes(){
+  let n = 0;
+  if (state.coverData) n += state.coverData.length * 0.75;
+  n += new Blob([state.manuscript || '']).size;
+  return n;
+}
+
+function updateSizeBar(){
+  const bytes = totalBytes();
+  const mb = bytes / (1024*1024);
+  const bar = $('sizeBar');
+  const txt = mb < 1 ? 'Indhold i filen: ' + Math.round(bytes/1024) + ' KB' : 'Indhold i filen: ' + mb.toFixed(1) + ' MB';
+  bar.className = 'sizebar' + (mb > 50 ? ' over' : (mb > 25 ? ' warn' : ''));
+  bar.textContent = txt
+    + (mb > 50 ? ' — filen er ved at være meget stor.'
+      : (mb > 25 ? ' — filen begynder at blive stor til at sende som vedhæftning.' : ''));
+}
+
+function readForm(){
+  state.label = $('label').value;
+  state.title = $('title').value;
+  state.place = $('place').value;
+  state.description = $('description').value;
+  state.coverAlt = $('coverAlt').value;
+  state.shareImage = $('shareImage').value;
+  state.manuscript = $('manuscript').value;
+  state.defaultMode = $('defaultMode').value;
+  for (let i = 0; i < 3; i++){
+    state.ctas[i].text = $('cta' + (i+1) + 'text').value;
+    state.ctas[i].url = $('cta' + (i+1) + 'url').value;
+  }
+  state.homeMode = $('homeMode').value;
+  state.homeLabel = $('homeLabel').value;
+  state.homeUrl = $('homeUrl').value;
+  state.visGem = $('visGem').checked;
+  state.visOmFil = $('visOmFil').checked;
+}
+
+function checkReady(){
+  $('generateBtn').disabled = !(state.title.trim() && extractFrontmatter(state.manuscript).body.trim());
+}
+
+// Felter, Dublin Core og størrelse opdateres med det samme. Selve rammen tegnes
+// med en kort forsinkelse, så skrivningen ikke bliver tung i lange manuskripter.
+let frameTimer = null;
+function renderPreview(){
+  readForm();
+  syncAutoDc();
+  updateSizeBar();
+  checkReady();
+  clearTimeout(frameTimer);
+  frameTimer = setTimeout(() => { $('previewFrame').srcdoc = buildBookHTML(state, true); }, 200);
+}
+
+['label','title','place','description','coverAlt','shareImage','manuscript','defaultMode',
+ 'cta1text','cta1url','cta2text','cta2url','cta3text','cta3url',
+ 'homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', renderPreview);
+  if (el.tagName === 'SELECT' || el.type === 'checkbox') el.addEventListener('change', renderPreview);
+});
+
+DC_FIELDS.forEach(key => {
+  const el = $(dcInputId(key));
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+    renderPreview();
+  });
+  if (el.tagName === 'SELECT') el.addEventListener('change', () => { syncAutoDc(); renderPreview(); });
+});
+
+document.querySelectorAll('#themePicker input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', () => { selectTheme(radio.value); renderPreview(); });
+});
+
+function selectTheme(themeKey){
+  state.theme = THEMES[themeKey] ? themeKey : 'original';
+  document.querySelectorAll('#themePicker input[name="theme"]').forEach(r => { r.checked = (r.value === state.theme); });
+  document.querySelectorAll('#themePicker .theme-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.theme === state.theme);
+  });
+}
+
+/* ---------- Filvalg ---------- */
+
+$('coverFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('coverStatus').textContent = 'Skalerer billede …';
+  $('coverStatus').className = 'status pending';
+  try {
+    state.coverData = await compressImage(file, 1600, 0.82);
+    const kb = Math.round(state.coverData.length * 0.75 / 1024);
+    $('coverStatus').textContent = 'Billede klar (~' + kb + ' KB efter komprimering)';
+    $('coverStatus').className = 'status';
+    renderPreview();
+  } catch(err){
+    $('coverStatus').textContent = 'Fejl: ' + err.message + '. Prøv et andet billede.';
+    $('coverStatus').className = 'status pending';
+  }
+});
+
+// Oplysninger øverst i en .md-fil udfylder kun tomme felter.
+function applyFrontmatter(md){
+  const fm = extractFrontmatter(md).fm;
+  const filled = [];
+  function put(id, v, touchKey){
+    const el = $(id);
+    if (!el || !v || el.value.trim()) return;
+    el.value = v; filled.push(id);
+    if (touchKey) dcTouched[touchKey] = true;
+  }
+  put('title', fm['dc.title']);
+  put('description', fm['dc.description']);
+  DC_FIELDS.forEach(key => {
+    if (key === 'title' || key === 'description' || key === 'publisher') return;
+    const v = fm['dc.' + key];
+    if (!v) return;
+    const el = $(dcInputId(key));
+    if (key === 'format' || key === 'language' || key === 'type'){
+      // Felter med standardværdi overskrives af frontmatter.
+      if (el.tagName === 'SELECT' && !Array.from(el.options).some(o => o.value === v)) return;
+      el.value = v; filled.push(key);
+      return;
+    }
+    put(dcInputId(key), v, key in dcTouched ? key : null);
+  });
+  if (fm['dc.publisher'] && !$('dcPublisher').value){
+    const p = normalizePublisher(fm['dc.publisher']);
+    ensurePublisherOption(p);
+    $('dcPublisher').value = p; filled.push('publisher');
+  }
+  return filled.length;
+}
+
+$('mdFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const txt = (await file.text()).replace(/^\uFEFF/, '');
+    $('manuscript').value = txt;
+    const n = applyFrontmatter(txt);
+    $('mdStatus').textContent = file.name + ' er hentet ind' + (n ? ' · ' + n + ' felter blev udfyldt fra filens oplysninger' : '');
+    $('mdStatus').className = 'status';
+    renderPreview();
+  } catch(err){
+    $('mdStatus').textContent = 'Fejl: ' + err.message;
+    $('mdStatus').className = 'status pending';
+  }
+});
+
+/* ---------- Indlæs eksisterende bog ---------- */
+
+function setField(id, value){ const el = $(id); if (el) el.value = value || ''; }
+
+function extractTaellerBlock(text){
+  const startMark = text.indexOf('TÆLLER');
+  if (startMark === -1) return '';
+  const endMark = text.indexOf('TÆLLER SLUT');
+  if (endMark === -1) return '';
+  const start = text.lastIndexOf('<!--', startMark);
+  const end = text.indexOf('-->', endMark);
+  if (start === -1 || end === -1 || end < start) return '';
+  return text.slice(start, end + 3);
+}
+
+let publisherFixed = '';
+
+function fillDcFields(dc){
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    if (!el) return;
+    let v = (dc && dc[key]) ? dc[key] : '';
+    if (key === 'publisher'){
+      const orig = v;
+      v = normalizePublisher(v);
+      if (orig && orig !== v) publisherFixed = orig + '" er rettet til "' + v;
+      ensurePublisherOption(v);
+    }
+    if (!v){
+      if (key === 'format') v = 'text/html';
+      else if (key === 'language') v = 'da';
+      else if (key === 'type') v = 'Text';
+    }
+    el.value = v;
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+  });
+}
+
+function rejectLoad(e, text){
+  $('loadStatus').textContent = text;
+  $('loadStatus').className = 'status pending';
+  e.target.value = '';
+}
+
+$('loadPage').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('loadStatus').textContent = 'Læser fil …';
+  $('loadStatus').className = 'status pending';
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const dataScript = doc.getElementById('builder-source-data');
+    const NOT_THIS = 'Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.';
+    if (!dataScript) return rejectLoad(e, NOT_THIS);
+    let data;
+    try { data = JSON.parse(dataScript.textContent); } catch(err){ return rejectLoad(e, NOT_THIS); }
+    if (data.format !== FORMAT_NAME) return rejectLoad(e, 'Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.');
+    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION) return rejectLoad(e, NOT_THIS);
+
+    setField('label', data.label);
+    setField('title', data.title);
+    setField('place', data.place);
+    setField('description', data.description);
+    setField('coverAlt', data.coverAlt);
+    setField('shareImage', data.shareImage);
+    setField('manuscript', data.manuscript);
+    $('defaultMode').value = (data.defaultMode === 'sepia' || data.defaultMode === 'dark') ? data.defaultMode : 'light';
+    (data.ctas || []).forEach((c, i) => { if (i < 3){ setField('cta' + (i+1) + 'text', c.text); setField('cta' + (i+1) + 'url', c.url); } });
+    $('homeMode').value = (data.homeMode === 'always' || data.homeMode === 'never') ? data.homeMode : 'auto';
+    setField('homeLabel', data.homeLabel);
+    setField('homeUrl', data.homeUrl);
+    $('visGem').checked = data.visGem !== false;
+    $('visOmFil').checked = data.visOmFil !== false;
+    selectTheme(data.theme || 'original');
+    publisherFixed = '';
+    fillDcFields(data.dublinCore || {});
+
+    // Forsidebilledet hentes fra selve filen, hvor det ligger som indlejrede data.
+    state.coverData = null;
+    $('coverStatus').textContent = 'Intet billede valgt';
+    $('coverStatus').className = 'status';
+    const img = doc.querySelector('.cover-img');
+    if (data.hasCover && img && (img.getAttribute('src') || '').indexOf('data:') === 0){
+      state.coverData = img.getAttribute('src');
+      $('coverStatus').textContent = 'Billede indlæst fra fil (~' + Math.round(state.coverData.length * 0.75 / 1024) + ' KB)';
+    }
+
+    state.taellerBlock = extractTaellerBlock(text);
+    $('loadStatus').textContent = 'Indlæst: ' + file.name
+      + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
+      + (publisherFixed ? ' · udgiveren "' + publisherFixed + '"' : '');
+    $('loadStatus').className = 'status';
+    renderPreview();
+  } catch(err){
+    $('loadStatus').textContent = 'Fejl ved indlæsning: ' + err.message;
+    $('loadStatus').className = 'status pending';
+  }
+});
+
+/* ---------- Gem ---------- */
+
+function downloadBlob(content, type, filename){
+  const blob = new Blob([content], {type:type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('metaJsonBtn').addEventListener('click', () => {
+  readForm();
+  syncAutoDc();
+  const dc = collectDublinCore();
+  const msg = $('msgBox');
+  if (Object.keys(dc).length === 0){
+    msg.textContent = 'Der er ingen Dublin Core-felter udfyldt endnu.';
+    msg.className = 'msg err';
+    return;
+  }
+  const payload = {'@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString()};
+  const name = slugify(state.title, 'bog') + '-metadata.json';
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json', name);
+  msg.textContent = 'Metadatafilen "' + name + '" er hentet ned.';
+  msg.className = 'msg ok';
+});
+
+$('generateBtn').addEventListener('click', () => {
+  const msg = $('msgBox');
+  try {
+    readForm();
+    syncAutoDc();
+    const html = buildBookHTML(state, false);
+    const name = slugify(state.title, 'bog') + '.html';
+    downloadBlob(html, 'text/html', name);
+    const size = new Blob([html]).size;
+    const sizeTxt = size < 1024*1024 ? Math.round(size/1024) + ' KB' : (size/(1024*1024)).toFixed(1) + ' MB';
+    msg.textContent = 'Bogen "' + name + '" er genereret og hentet ned (' + sizeTxt + '). Den kan åbnes direkte i browseren uden internet.'
+      + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig nederst i filen.' : '')
+      + ' Husk 3-2-1: gem mindst tre kopier på to slags medier, hvoraf én ligger et andet sted.';
+    msg.className = 'msg ok';
+  } catch(err){
+    msg.textContent = 'Der gik noget galt: ' + err.message;
+    msg.className = 'msg err';
+  }
+});
+
+selectTheme('original');
+renderPreview();
+</script>
+</body>
+</html>
