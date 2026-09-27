@@ -3,8 +3,8 @@
 **Fælles specifikation for værktøjskassen**
 Version 1.1 · september 2026
 
-Referenceimplementering: Lydfortælling · Bygger (`lyd-fort-gen-dc-v3.html`).
-Når dette dokument og en referencefil er uenige om **udgivere, id-præfikser og temaer**, er det dokumentet der gælder. På alle andre punkter gælder referencefilen, når noget er i tvivl.
+Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.2).
+Når noget er i tvivl, er det referencefilen der gælder. De få steder, hvor standarden bevidst er foran referencefilen, er markeret med **[ret i reference]** og samlet i afsnit 13.
 
 ---
 
@@ -14,13 +14,13 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 
 | App | Genererer | dc.type |
 |---|---|---|
+| Sidebygger | artikelside om gader, steder og mennesker | Text |
 | Lydfortælling · Bygger | lydafspiller med billede og tekst | Sound |
 | Album · Bygger | billedalbum med grid og lightbox | Image |
 | Bogbygger | e-bog / lydbog | Text |
 | Enkeltbillede · Bygger | ét billede i høj kvalitet med tekst og Exif | Image |
 | Før og Nu · Bygger | to billeder fra samme sted med slider | Image |
-| Sidebygger | artikelside om gader, steder og mennesker | Text |
-| Videokort · Bygger | kort til en YouTube-udsendelse med kapitler | afklares (se afsnit 13) |
+| Videokort · Bygger | kort til en YouTube-udsendelse med kapitler | MovingImage |
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
 | Vejledningsbygger | trin-for-trin vejledning | afklares |
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
@@ -28,6 +28,8 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
 Vejledningsbygger og PWA · Bygger afviger bevidst på enkelte punkter, fordi de ikke laver indhold på samme måde som de andre. Afvigelserne skal stå i appens egen beskrivelse.
+
+Ældre filer, der er lavet før en bygger blev bragt i overensstemmelse med standarden, laves om i den nye bygger. Byggerne skal ikke bære rundt på kode til at forstå gamle formater.
 
 ### Grundprincipper
 
@@ -37,13 +39,22 @@ Vejledningsbygger og PWA · Bygger afviger bevidst på enkelte punkter, fordi de
 
 ### 1.1 Bevaringsstrategi og backup (3-2-1-reglen)
 
-Selv den mest holdbare HTML-fil med komplet Dublin Core-metadata har ingen værdi, hvis filen forsvinder fysisk. Alle guider, workshops og brugerflader skal fremhæve 3-2-1-princippet:
+Selv den mest holdbare HTML-fil har ingen værdi, hvis filen forsvinder fysisk. Alle guider, workshops og brugerflader skal fremhæve 3-2-1-princippet:
 
 - **3 kopier:** den originale fil plus mindst 2 kopier.
 - **2 medietyper:** mindst to forskellige lagringsmedier (fx computerens harddisk og et USB-stik).
 - **1 off-site:** mindst én kopi opbevaret et andet sted (fx hos et familiemedlem eller i et foreningsarkiv).
 
-Da alt ligger i én offline HTML-fil, er det let for uøvede brugere at følge reglen uden at holde styr på løse bilag.
+### 1.2 Hvor tingene ligger
+
+Standarden og byggerne ligger i ét GitHub-repo:
+
+```
+builder-standard.md      ← den officielle udgave
+byggere/                 ← én fil pr. bygger, kun nyeste version
+arkiv/                   ← gamle versioner
+eksempler/               ← en færdig testfil fra hver bygger
+```
 
 ---
 
@@ -51,10 +62,11 @@ Da alt ligger i én offline HTML-fil, er det let for uøvede brugere at følge r
 
 ```
 ┌──────────────────────────────────────────────┐
-│ Topbar: <Appnavn> · Bygger + kort forklaring │
+│ Topbar: Appnavn + linje om hvad den gør,     │
+│         "kører lokalt, ingen server", version │
 ├───────────────────────────┬──────────────────┤
-│ Formular-rude (max 640px) │ Forhåndsvisning  │
-│                           │ (380px, sticky)  │
+│ Formular-rude (max 660px) │ Forhåndsvisning  │
+│                           │ (420px, sticky)  │
 │ felter …                  │ iframe med       │
 │ Dublin Core (foldet ind)  │ live output      │
 │ [ Generér … (.html) ]     │                  │
@@ -62,18 +74,22 @@ Da alt ligger i én offline HTML-fil, er det let for uøvede brugere at følge r
 └───────────────────────────┴──────────────────┘
 ```
 
-Grid: `1fr 380px`, falder til én kolonne under 860 px.
+Grid: `1fr 420px`, falder til én kolonne under 900 px.
 
 Forhåndsvisningen opdateres ved hvert tastetryk (`renderPreview()`) og bygges med samme funktion som den endelige fil, ellers driver de fra hinanden. Tællerkoden udelades bevidst i forhåndsvisningen.
+
+Topbarens overskrift er appens navn i Georgia 25 px. Versionsnummeret står i underlinjen, fx "… · kører lokalt, ingen server · version 1.2". Browserfanens `<title>` er appens navn.
 
 ### Rækkefølge af felter
 
 1. Indlæs eksisterende fil (valgfri), altid øverst
 2. Tema
 3. Appens egne indholdsfelter (mærkat, titel, sted, billede, lyd, tekst …)
-4. Knap i bunden (valgfri CTA: knaptekst + URL)
-5. Dublin Core-metadata, sammenfoldet `<details>`-panel
-6. Generér-knap + beskedboks
+4. Knapper i bunden (valgfri CTA: knaptekst + URL)
+5. Hjem-knap (se 5.3)
+6. "Nederst på den færdige side": afkrydsning for **Gem filen** og **Om denne fil**
+7. Dublin Core-metadata, sammenfoldet `<details>`-panel
+8. Generér-knap + beskedboks
 
 ---
 
@@ -89,15 +105,18 @@ Forhåndsvisningen opdateres ved hvert tastetryk (`renderPreview()`) og bygges m
 --moss:      #47543C  /* feltlabels */
 --hint:      #5F5A4B  /* hjælpetekster */
 --line:      #cbc2a8  /* streger og rammer */
+--serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+--sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 ```
 
-Skrift: systemets sans-serif til brugerfladen, Georgia/serif kun til overskriften i topbaren.
+Builderens egen brugerflade har altid disse farver, uanset hvilket tema der er valgt til outputfilen.
 
 ### Skriftstørrelser i builderen, minimum
 
 | Element | Størrelse |
 |---|---|
-| Feltlabel | 13,5 px, halvfed, versaler |
+| Topbar-overskrift | 25 px, Georgia |
+| Feltlabel | 13,5 px, halvfed, versaler, spatiering 0,09em |
 | Hjælpetekst under felt | 13,5 px, linjehøjde 1,55 |
 | Inputfelt og textarea | 15,5 px |
 | Dublin Core-feltlabel | 14 px |
@@ -106,71 +125,110 @@ Skrift: systemets sans-serif til brugerfladen, Georgia/serif kun til overskrifte
 | Generér-knap | 17 px, fed |
 | Beskedboks | 14,5 px |
 
-Kontrastkrav: al tekst mindst 4,5:1 mod sin baggrund. Lysegrå toner (#a39c88, #7c7563) bruges ikke til småtekst.
+Kontrastkrav: al tekst mindst 4,5:1 mod sin baggrund.
 
-### Temaerne
+### Temaerne til outputfilen
 
-Samme temaer i alle apps, samme hex-værdier, valgt med store farvede radioknapper med farveprikker.
+Fem temaer, samme nøgler og samme værdier i alle apps. Vælges med store farvede radioknapper med farveprikker, i denne rækkefølge. Hvert tema har både lys og mørk udgave (`d`-præfiks = mørk tilstand).
 
-| Tema | Accent | Papir | Kort | Korttekst |
-|---|---|---|---|---|
-| Oprindeligt | #9A4630 | #EDE7D8 | #1B1A16 | #F2ECDD |
-| Røde Kors | #E30A0B | #FFFFFF | #E30A0B | #FFFFFF |
-| Lokalhistorisk (bordeaux) | #9E2453 | #FAF9F5 | #9E2453 | #FAF9F5 |
-| Roskilde TV | #B03035 | #FFFFFF | afklares | afklares |
-
-**Roskilde TV:** hvid baggrund, næsten sort tekst, rød accent fra logoet. Farveprikken i temavælgeren er flerfarvet (logoets seks prikfarver). De øvrige tokens hentes fra `sidebygger-hs.html`, hvor temaet er implementeret, og skrives ind her ved næste revision.
-
-Hvert tema definerer desuden: `cardBg, ink, moss, line, timesColor, footerColor, muted, footerStrong, bodyText, quoteText, codeBg`.
-
-| Tema | muted | footerStrong |
+| Nøgle | Navn i vælgeren | Accent |
 |---|---|---|
-| Oprindeligt | #6B6455 | #4A463C |
-| Røde Kors | #5A5A5A | #333333 |
-| Bordeaux | #6B5560 | #3A2630 |
-| Roskilde TV | afklares | afklares |
+| `original` | Oprindeligt | #9A4630 |
+| `historisk` | Historisk Samfund | #385261 |
+| `lokalhistorisk2` | Lokalhistorisk (bordeaux) | #9E2453 |
+| `roedekors` | Røde Kors | #E30A0B |
+| `roskildetv` | Roskilde TV | #B03035 |
 
-Temaet skrives ud som CSS-variabler i `:root` i den genererede fil, aldrig som faste farver inde i reglerne.
+Den fulde definition kopieres uændret ind i hver bygger:
+
+```js
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+```
+
+Roskilde TV's farveprik i vælgeren er flerfarvet (logoets seks prikfarver). Videokort · Bygger må desuden vise prikrækken i selve kortet.
+
+Temaet skrives ud som CSS-variabler i `:root` i den genererede fil, aldrig som faste farver inde i reglerne. Kommer et nyt tema til, tilføjes det her først og kopieres derefter til alle byggere.
 
 ---
 
 ## 4. Dublin Core
 
-Denne del skal være fuldstændig identisk i alle apps: samme 15 felter, samme rækkefølge, samme danske labels, samme hjælpetekster.
+Samme 15 felter, samme rækkefølge og samme labels i alle apps. Hjælpeteksten starter altid med feltnavnet (fx `dc.creator —`) og må derefter tilpasses appen (fx "den der har skrevet siden" i Sidebyggeren).
 
-| # | Felt | Label | Hjælpetekst | Standard |
+| # | Felt | Label | Standard-hjælpetekst | Standard |
 |---|---|---|---|---|
 | 1 | dc.title | Titel | udfyldes automatisk fra titlen | (auto) |
-| 2 | dc.creator | Ophav / skaber | fortæller, optager eller den der har skabt materialet | |
+| 2 | dc.creator | Ophav / skaber | den der har skabt materialet | |
 | 3 | dc.subject | Emne / nøgleord | adskil med semikolon | |
-| 4 | dc.description | Beskrivelse | udfyldes automatisk fra beskrivelsen | (auto) |
-| 5 | dc.publisher | Udgiver | vælg fra listen (se 4.1) | tom |
-| 6 | dc.contributor | Bidragyder | den der har interviewet, redigeret eller registreret | |
+| 4 | dc.description | Beskrivelse | udfyldes automatisk | (auto) |
+| 5 | dc.publisher | Udgiver / område | vælg område, så filen kan filtreres i søgeindekset | tom |
+| 6 | dc.contributor | Bidragyder | den der har redigeret, fotograferet eller registreret | |
 | 7 | dc.date | Dato | helst ÅÅÅÅ-MM-DD, men fx "ca. 1955" er også i orden | |
-| 8 | dc.type | Type | DCMI-typeordforråd (dropdown) | appens egen |
+| 8 | dc.type | Type | DCMI-typeordforråd | appens egen |
 | 9 | dc.format | Format | filens tekniske format | text/html |
-| 10 | dc.identifier | Identifikator | arkivnummer, URL eller lignende | |
-| 11 | dc.source | Kilde | hvor materialet stammer fra | |
+| 10 | dc.identifier | Identifikator | foreslås automatisk ud fra område og titel | (auto) |
+| 11 | dc.source | Kilde | hvor oplysningerne stammer fra | |
 | 12 | dc.language | Sprog | sprogkode, fx da | da |
-| 13 | dc.relation | Relation | beslægtet materiale, fx et billedalbum | |
+| 13 | dc.relation | Relation | beslægtet materiale | |
 | 14 | dc.coverage | Dækning | sted og/eller periode, udfyldes automatisk fra Sted | (auto) |
 | 15 | dc.rights | Rettigheder | ophavsret og vilkår for brug | |
 
-Dropdown til dc.type: Sound, InteractiveResource, Text, Image, Collection, Event, (ingen). Hver app forvælger sin egen.
+Dropdown til dc.type, i denne rækkefølge: Text, Image, Sound, MovingImage, InteractiveResource, Collection, Event. Hver app forvælger sin egen. **[ret i reference: MovingImage og Event mangler]**
 
 ### Regler
 
 - Alle felter er valgfrie. Tomme felter udelades helt af outputfilen.
-- title, description og coverage spejler formularen automatisk, indtil man selv skriver i feltet (`dcTouched`-flag). description afstribes for Markdown og forkortes til 300 tegn.
+- Fire felter udfyldes automatisk, indtil man selv skriver i dem (`dcTouched`-flag): title, description, coverage og identifier. description afstribes for Markdown og forkortes til 300 tegn.
 - subject deles ved semikolon og skrives som ét `<meta>`-tag pr. nøgleord.
-- Panelet er sammenfoldet som standard med underteksten: "Til arkivering. Alle felter er valgfrie — udfyld dem der giver mening."
+- Panelet er sammenfoldet som standard.
 - Knappen **Gem metadata som separat JSON-fil** giver `<slug>-metadata.json`:
   `{ "@context": "http://purl.org/dc/elements/1.1/", "dublinCore": { … }, "generated": "…Z" }`
 
 I den genererede fil skrives metadata to steder:
 
-1. I `<head>`: `<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">` efterfulgt af `<meta name="DC.xxx" content="…">` i feltrækkefølgen.
-2. Nederst på siden: et udfoldeligt panel **Om denne fil** med dansk label, teknisk feltnavn i småt og værdien, skrevet som færdig HTML.
+1. I `<head>`: `<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">` efterfulgt af `<meta name="DC.xxx" content="…">` i feltrækkefølgen. Dette sker altid.
+2. Nederst på siden: et udfoldeligt panel **Om denne fil** med label, teknisk feltnavn i småt og værdien, skrevet som færdig HTML. Kan slås fra (se 5.4).
 
 Sidens `<html lang="…">` sættes fra dc.language, ellers `da`.
 
@@ -178,29 +236,29 @@ Sidens `<html lang="…">` sættes fra dc.language, ellers `da`.
 
 Hver fil skal kunne henføres til præcis én udgiver, så en samling kan filtreres, pakkes og videregives uden manuel gennemgang.
 
-**Bærende felt: dc.publisher.** Feltet bruges kun til dette og vises som en rulleliste, aldrig som frit tekstfelt. Standardvalg er tomt, så udfyldelsen er et bevidst valg. Listen ligger i builderen som ét `PUBLISHERS`-array øverst i scriptet, så en ny udgiver er en ændring på én linje.
+dc.publisher vises som en rulleliste, aldrig som frit tekstfelt, med standardvalget "(ikke valgt)". Listen ligger som ét `PUBLISHERS`-array øverst i scriptet og kopieres uændret til alle byggere:
 
-Værdien er én af disse strenge, gengivet tegn for tegn, med **almindelig bindestreg**:
+```js
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+```
 
-| Udgiver (værdi i dc.publisher) | Præfiks | Eksempel på id |
-|---|---|---|
-| Historisk Samfund for Roskilde Amt | HSR | HSR-side-0001 |
-| Privat | PRIV | PRIV-album-0003 |
-| Roskilde TV | RTV | RTV-video-0012 |
-| Røde Kors | RKR | RKR-bog-0007 |
-| Syd for Banen - Lokalhistorisk Forening | SFB | SFB-lyd-0142 |
+Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stavemåder (tankestreg, "Røde Kors Roskilde", "SFB", "privat" med lille p) skaber nye grupper i søgesiden og regnes som fejl.
 
-Afvigende stavemåder (tankestreg, "Røde Kors Roskilde", "SFB", "privat" med lille p) skaber nye grupper i søgesiden og regnes som fejl.
+Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". **[ret i reference: Sidebyggeren beholder i dag det gamle navn som ekstra valg]**
 
-**Ældre filer:** Når en builder indlæser en fil med en gammel værdi, rettes den automatisk til den gældende streng: "Røde Kors Roskilde" bliver til "Røde Kors", og tankestreg bliver til bindestreg. Så rettes ældre filer, efterhånden som de åbnes og gemmes igen.
+**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026`. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Forslaget kan overskrives.
 
-**dc.identifier:** formatet er `PRÆFIKS-type-løbenummer` med fire cifre. Præfikset gentages i filnavnet, så udgiveren kan ses i en mappevisning. Enkelte apps kan bruge et navn i stedet for løbenummer (fx `SFB-side-astersvej-2026`).
+**dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje" og "Steder, institutioner og mennesker") indsætter serien som andet emneord.
 
-**dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje") må indsætte serien som andet emneord.
+`Syd for Banen - Lokalhistorisk Forening; Gader og veje; Astersvej; velfærdsbyggeri`
 
-`Syd for Banen - Lokalhistorisk Forening; Gader og veje; Musicon; 1970erne`
-
-**Afgrænsning mod dc.rights:** dc.rights beskriver, hvad andre må med filen, og udfyldes uafhængigt af udgiveren. Typiske værdier:
+**dc.rights** beskriver, hvad andre må med filen, og udfyldes uafhængigt af udgiveren. Typiske værdier:
 
 | Udgiver | Typisk dc.rights |
 |---|---|
@@ -208,74 +266,83 @@ Afvigende stavemåder (tankestreg, "Røde Kors Roskilde", "SFB", "privat" med li
 | Syd for Banen | © Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse. |
 | Røde Kors | © Røde Kors. Må anvendes i foreningens formidling. |
 
-**Adskillelse på disken:** arbejdsfilerne ligger i én mappe pr. udgiver på øverste niveau, og en distributionspakke bygges altid fra én mappe ad gangen.
+**Adskillelse på disken:** arbejdsfilerne ligger i én mappe pr. udgiver, og en distributionspakke bygges fra én mappe ad gangen.
 
-**Søgesiden** læser dc.publisher og bygger et udgiverfilter ud fra de værdier, der faktisk findes i samlingen. Filer uden udgiver samles under **Uden område** og rettes ved kilden.
+**Søgesiden** bygger sit udgiverfilter ud fra de værdier, der faktisk findes i samlingen. Filer uden udgiver samles under **Uden område** og rettes ved kilden.
 
-**Nye udgivere** tilføjes i tabellen ovenfor med fast streng og præfiks, før de tages i brug, og derefter i `PUBLISHERS` i alle byggere samt i prompten i afsnit 11.
+**Nye udgivere** tilføjes i `PUBLISHERS` ovenfor, før de tages i brug, derefter i alle byggere og i prompten i afsnit 11.
 
 ---
 
 ## 5. Outputfilens kontrakt
 
+### 5.1 Kildedata
+
 Hver genereret fil indeholder en JSON-blok, der gør filen redigerbar igen:
 
 ```html
 <script type="application/json" id="builder-source-data">
-{ "format": "lydfortaelling-player",
-  "builderVersion": 2,
-  "title": "…", "description": "…", "theme": "rodekors",
+{ "format": "sidebygger-side",
+  "builderVersion": 1,
+  "theme": "roedekors",
+  "title": "…",
   "dublinCore": { … } }
 </script>
 ```
 
-- `format` er appens eget navn (lydfortaelling-player, billedalbum, ebog, foer-og-nu …).
+- `format` er appens eget navn (sidebygger-side, lydfortaelling-player, billedalbum, ebog, foer-og-nu …).
 - `builderVersion` er et heltal, der tælles op ved formatændringer.
+- `theme` er en af nøglerne fra afsnit 3.
 - Blokken indeholder den rå Markdown, ikke færdig HTML.
 - Billeder og lyd hører ikke til i JSON-blokken. De læses tilbage fra dokumentet.
 
-### Øvrigt indhold i `<head>`
+### 5.2 Øvrigt indhold i `<head>`
 
 - og:type, og:title, og:description altid. og:image + twitter:card kun hvis **Webadresse til delingsbillede** er udfyldt.
 - `<link rel="icon">` sat til det indlejrede billede.
 
-### Nederst i filen
+### 5.3 Hjem-knap
 
-Manuelt indsat tællerkode mellem markørerne `TÆLLER` og `TÆLLER SLUT` bevares uændret. Builderen skriver aldrig selv tællerkode.
+Øverst i outputfilen kan der stå en hjem-knap. Builderen har tre valg:
 
-### Filnavn
+- **Automatisk** (standard): knappen vises kun, når filen er del af noget større. Filen viser den, hvis den er åbnet som installeret app, hvis man kom fra en side i samme mappe, eller hvis der ligger en `index.html` ved siden af (online). Åbnes filen alene, bliver knappen væk.
+- **Altid vist**
+- **Aldrig vist**
 
-Slug af titlen: små bogstaver, æ→ae, ø→oe, å→aa, alt andet end a-z0-9 bliver til bindestreg.
+Knaptekst (standard "Hjem") og adresse (standard `index.html`) kan ændres. En adresse i URL'en (`?hjem=…`) går forud for den indbyggede. I forhåndsvisningen vises knappen altid.
 
-### Gem-knap i den færdige fil
+### 5.4 Nederst i filen
 
-- Pilikon (19-20 px, accentfarve, stregtykkelse 2,4) + teksten **Gem filen** (16,5 px, fed).
-- Pilleform med 2 px ramme i accentfarven, fyldes ved hover.
-- Synlig tastaturfokus: 3 px outline.
-- Under knappen en kort kursiveret linje om hvad filen er ("En lydfortælling" …), i footerStrong.
-- **Nyt i 1.1:** Knappen gemmer en ren kopi. Mørk tilstand og valgt skriftstørrelse nulstilles, før siden gemmes, så filen altid åbner i standardudseendet.
+- **Gem filen**-knap: pilikon i accentfarven + teksten **Gem filen** (fed), pilleform med 2 px ramme, fyldes ved hover, 3 px fokus-outline. Under knappen en kort kursiveret linje om hvad filen er. Knappen gemmer en ren kopi: mørk tilstand, skriftstørrelse og op-pil nulstilles før gem.
+- **Om denne fil**-panelet (se afsnit 4).
+- Begge kan slås fra i builderen, fx når siden vises inde på et website. Dublin Core i `<head>` følger altid med.
+- Manuelt indsat tællerkode mellem `TÆLLER` og `TÆLLER SLUT` bevares uændret. Builderen skriver aldrig selv tællerkode.
 
-### Valgfrie hjælpefunktioner (nyt i 1.1)
+### 5.5 Læsehjælp i outputfilen
 
-Til lange outputfiler må appen tilbyde, som i Vejledningsbyggeren:
+- **Mørk tilstand**: knap i toppen, bruger temaets `d`-farver.
+- **Skriftstørrelse**: knapper til mindre og større skrift, skala 0,85-1,7 i trin af 0,1 via `--fs`-variablen. Al typografi i outputfilen er i `em` eller ganges med `--fs`.
+- **Op-pil**: rund knap nederst til højre i accentfarven, 48 × 48 px, vises efter 400 px scroll.
+- Ved udskrift skjules værktøjslinje, op-pil og gem-knap.
 
-- **Skriftstørrelse A / A+ / A++** i toppen, med typografi i `em` ud fra en `--fs`-variabel.
-- **Op-pil** nederst til højre, der vises efter ca. en skærmhøjdes scroll.
+Korte outputfiler (fx et enkelt billede) må udelade skriftstørrelse og op-pil.
 
-Begge kan slås fra i builderen og vises ikke ved udskrift.
+### 5.6 Filnavn
+
+Slug af titlen: små bogstaver, accenter fjernet, alt andet end a-z0-9 bliver til bindestreg.
 
 ---
 
 ## 6. Markdown i tekstfelter
 
-Alle apps understøtter den samme lille delmængde. Hverken mere eller mindre.
+Alle apps understøtter den samme lille delmængde.
 
 | Skrives | Bliver til |
 |---|---|
 | `**fed**` | fed |
 | `*kursiv*` | kursiv |
-| `## Overskrift` | `<h2>`, 21 px |
-| `### Overskrift` | `<h3>`, 18 px |
+| `## Overskrift` | `<h2>` |
+| `### Overskrift` | `<h3>` |
 | `- punkt` | punktliste |
 | `1. punkt` | nummereret liste |
 | `> citat` | citat med streg i accentfarven |
@@ -300,7 +367,7 @@ Tekst escapes før oversættelsen. Sidens titel er `<h1>`, så et enkelt `#` giv
 
 ## 8. Billeder
 
-Skaleres til maks. 1100 px på den længste led, JPEG kvalitet 0,78. Statuslinjen viser omtrentlig størrelse efter komprimering.
+Skaleres til maks. **1600 px** på den længste led og gemmes som JPEG, kvalitet **0,82**. Faste indstillinger, ingen knapper at skrue på. Statuslinjen viser omtrentlig størrelse efter komprimering.
 
 Undtagelse: Enkeltbillede · Bygger gemmer i høj opløsning (3000-4000 px eller originalen) og bevarer Exif, fordi det er appens formål.
 
@@ -310,7 +377,7 @@ Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 
 ## 9. Tilgængelighed
 
-- Kontrast mindst 4,5:1 for al tekst, også i den færdige fil.
+- Kontrast mindst 4,5:1 for al tekst, i både lys og mørk tilstand.
 - Synligt fokus: 2 px outline i builderen, 3 px på gem-knappen.
 - Klikflader mindst 44 × 44 px.
 - Ingen information formidlet med farve alene.
@@ -319,29 +386,40 @@ Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 
 ---
 
-## 10. Tjekliste ved en app i serien
+## 10. Tjekliste
 
-- [ ] Topbar med `<Appnavn> · Bygger` og en linje om hvad den gør
-- [ ] To-rudet layout med live forhåndsvisning i iframe
-- [ ] Alle temaer fra afsnit 3, samme hex-værdier, farveprikker
+**Builderen**
+- [ ] Topbar med appnavn, en linje om hvad den gør, og versionsnummer
+- [ ] To-rudet layout (1fr 420px) med live forhåndsvisning i iframe
 - [ ] Feltrækkefølgen fra afsnit 2
 - [ ] Skriftstørrelser og kontrast fra afsnit 3
-- [ ] Alle 15 Dublin Core-felter, i rækkefølge, med samme labels og hjælpetekster
-- [ ] Automatisk spejling af title, description, coverage med dcTouched-flag
-- [ ] Knap til JSON-eksport af metadata
-- [ ] DC-meta i `<head>` og "Om denne fil"-panel i outputfilen
-- [ ] `builder-source-data` med format og builderVersion
+- [ ] De fem temaer med `THEMES` kopieret uændret fra afsnit 3
 - [ ] Indlæsning af egne filer med pæn afvisning af fremmede filer
+- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede)
+
+**Dublin Core**
+- [ ] Alle 15 felter, i rækkefølge, med samme labels
+- [ ] Hjælpetekster starter med feltnavnet
+- [ ] dc.type-listen fra afsnit 4 med appens egen type forvalgt
+- [ ] Automatisk udfyldning af title, description, coverage og identifier med dcTouched-flag
+- [ ] `PUBLISHERS` kopieret uændret fra 4.1, vist som rulleliste
+- [ ] Gamle udgiverværdier rettes ved indlæsning
+- [ ] Udgiveren står som første emneord
+- [ ] Identifikator foreslås som `PRÆFIKS-type-titelslug-år`
+- [ ] Knap til JSON-eksport af metadata
+
+**Outputfilen**
+- [ ] DC-meta i `<head>` og "Om denne fil"-panel
+- [ ] `builder-source-data` med format, builderVersion og theme
+- [ ] Temaet som CSS-variabler i `:root`, med mørk tilstand
+- [ ] Hjem-knap med Automatisk / Altid / Aldrig
+- [ ] "Gem filen" gemmer en ren kopi
+- [ ] "Gem filen" og "Om denne fil" kan slås fra
+- [ ] Skriftstørrelse og op-pil (på lange sider)
 - [ ] Tællerkode bevares ved genindlæsning
 - [ ] og:-tags og felt til delingsbillede
-- [ ] "Gem filen"-knap, der gemmer en ren kopi
 - [ ] Markdown-delmængden fra afsnit 6
 - [ ] Filnavn som slug af titlen
-- [ ] dc.publisher som rulleliste med de fem faste udgivere fra 4.1
-- [ ] Gamle udgiverværdier rettes ved indlæsning
-- [ ] dc.identifier har det præfiks, der svarer til udgiveren
-- [ ] Udgiveren står som første emneord i dc.subject
-- [ ] dc.rights beskriver anvendelse, ikke udgiver
 
 ---
 
@@ -356,7 +434,7 @@ Når flere foreninger og enkeltpersoner leverer materiale, skal metadata udfylde
 1. Bidragyderen udfylder INDLEDNING øverst i sin tekst.
 2. Teksten indsættes i AI'en, som svarer med de 15 felter.
 3. Felter markeret [?] kontrolleres.
-4. Identifikator tildeles manuelt (løbenummer med præfiks fra 4.1).
+4. Identifikatoren overlades til byggeren, der foreslår den automatisk.
 5. Felterne kopieres ind i byggeren.
 
 ### 11.3 Indledning (udfyldes af bidragyder)
@@ -397,7 +475,8 @@ REGLER
 - Emne: udgiveren som første emneord, derefter 3-6 emneord
   adskilt af semikolon.
 - Beskrivelse: 2-4 saglige sætninger uden vurderinger.
-- Type: Sound, Text, Image, InteractiveResource, Collection eller Event.
+- Type: Text, Image, Sound, MovingImage, InteractiveResource,
+  Collection eller Event.
 - Format: text/html.
 - Identifikator: lad altid stå tom.
 - Sprog: da, medmindre teksten er på et andet sprog.
@@ -408,7 +487,7 @@ Titel (dc.title):
 Ophav / skaber (dc.creator):
 Emne / nøgleord (dc.subject):
 Beskrivelse (dc.description):
-Udgiver (dc.publisher):
+Udgiver / område (dc.publisher):
 Bidragyder (dc.contributor):
 Dato (dc.date):
 Type (dc.type):
@@ -423,31 +502,38 @@ Rettigheder (dc.rights):
 
 ### 11.5 Vedligeholdelse
 
-Udgiverlisten i prompten skal altid svare til tabellen i 4.1 og byggernes `PUBLISHERS`. Kommer der en ny udgiver, rettes alle tre steder.
+Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en ny udgiver, rettes begge steder.
 
 ---
 
 ## 12. Ændringslog
 
 **Version 1.1 — september 2026.**
-- Fem faste udgivere med id-præfikser (HSR, PRIV, RTV, RKR, SFB). "Røde Kors Roskilde" er erstattet af "Røde Kors".
-- Almindelig bindestreg i udgivernavne i stedet for tankestreg.
-- Områdetillægget er indarbejdet i afsnit 4.1.
-- Gamle udgiverværdier rettes automatisk ved indlæsning.
-- Temaet Roskilde TV tilføjet.
-- App-oversigten opdateret med Enkeltbillede, Før og Nu, Sidebygger, Videokort, Henvisning, Vejledning og PWA.
-- "Gem filen" gemmer en ren kopi. Valgfri A/A+/A++ og op-pil.
-- Undtagelse for billedstørrelse i Enkeltbillede · Bygger.
+- Ny referenceimplementering: Sidebygger (`sidebygger-hs.html`, v1.2) i stedet for Lydfortælling · Bygger.
+- Layout 1fr 420px / 900 px / 660 px, som i referencen.
+- Fem temaer med lys og mørk udgave, defineret i ét `THEMES`-objekt. Nyt: Historisk Samfund og Roskilde TV.
+- Fem faste udgivere i ét `PUBLISHERS`-array med præfikser. "Røde Kors Roskilde" er erstattet af "Røde Kors". Almindelig bindestreg.
+- Områdetillægget fra v1.0 er indarbejdet i afsnit 4.1.
+- Identifikator foreslås automatisk (`PRÆFIKS-type-titelslug-år`) i stedet for løbenummer.
+- dc.type-listen udvidet med MovingImage.
+- Hjælpetekster til DC må tilpasses appen, når de starter med feltnavnet.
+- Hjem-knap med Automatisk / Altid / Aldrig.
+- "Gem filen" og "Om denne fil" kan slås fra. "Gem filen" gemmer en ren kopi.
+- Mørk tilstand, skriftstørrelse og op-pil i outputfilen.
+- Billeder 1600 px / 0,82 i stedet for 1100 px / 0,78.
+- Filer lavet før ensretningen laves om. Ingen kode til gamle formater.
 - Nyt afsnit 11 om AI-assisteret udfyldning af Dublin Core.
-- Tjeklisten udvidet.
 
 **Version 1.0 — august 2026.** Første udgave, skrevet ud fra Lydfortælling · Bygger version 2.
 
 ---
 
-## 13. Åbne punkter til næste revision
+## 13. Åbne punkter
 
-- De fulde tokens for Roskilde TV-temaet hentes fra `sidebygger-hs.html`. Sidebyggeren har fem temaer. Hvis det femte er et selvstændigt tema (fx Historisk Samfund), skal det skrives ind i afsnit 3.
-- dc.type for Videokort, Henvisning, Vejledning og PWA. Videokort er video, men dropdownen mangler MovingImage.
-- Skal referenceimplementeringen fortsat være Lydfortælling · Bygger, eller skal det være Sidebyggeren?
-- Skal alle outputfiler have en hjem-knap, og hvordan skal den se ud?
+**Ret i referencen (Sidebygger):**
+- dc.type-listen mangler MovingImage og Event.
+- Gamle udgiverværdier beholdes i dag som ekstra valg "(fra ældre fil)" i stedet for at blive rettet til "Røde Kors".
+
+**Afklares, når byggeren tages op:**
+- dc.type for Henvisning, Vejledning og PWA.
+- Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem).
