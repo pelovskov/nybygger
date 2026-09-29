@@ -650,12 +650,6 @@ function fmtTimeLong(t){
   const two = n => (n < 10 ? '0' : '') + n;
   return two(h) + ':' + two(m) + ':' + two(s);
 }
-function fmtClock(sec){
-  sec = Math.max(0, Math.floor(sec || 0));
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), r = sec % 60;
-  const two = n => (n < 10 ? '0' : '') + n;
-  return h ? h + ':' + two(m) + ':' + two(r) : m + ':' + two(r);
-}
 function fmtDuration(sec){
   sec = Math.round(sec || 0);
   if (!sec) return '';
@@ -1243,103 +1237,6 @@ function mediekortRuntime(C){
     audio.addEventListener("error", function(){ body.classList.add("media-error"); });
   }
 
-  /* --- Lydafspilleren (samme som i lydfortællingerne) --- */
-  var box = byId("audiobox"), ticksEl = byId("ticks");
-  if (C.mode === "audio" && audio && box && ticksEl){
-    var barPlay = byId("barPlay"), curTimeEl = byId("curTime"), durTimeEl = byId("durTime");
-    var resumeBar = byId("resumeBar"), resumeTimeEl = byId("resumeTime"), restartBtn = byId("restartBtn");
-    var TICK_COUNT = 64, ticks = [];
-    for (var i = 0; i < TICK_COUNT; i++){
-      var tk = document.createElement("div");
-      tk.className = "tick";
-      tk.style.height = (6 + Math.round(Math.abs(Math.sin(i * 0.7)) * 20)) + "px";
-      ticksEl.appendChild(tk); ticks.push(tk);
-    }
-    function fmt(sec){
-      if (!isFinite(sec) || sec < 0) sec = 0;
-      sec = Math.floor(sec);
-      var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-      return (h ? h + ":" + (m < 10 ? "0" : "") + m : m) + ":" + (s < 10 ? "0" : "") + s;
-    }
-    function updateTicks(){
-      var dur = audio.duration || 0, cur = audio.currentTime || 0;
-      var ratio = (dur && isFinite(dur)) ? cur / dur : 0;
-      var active = Math.floor(ratio * TICK_COUNT);
-      for (var j = 0; j < ticks.length; j++) ticks[j].classList.toggle("played", j < active);
-      ticksEl.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
-      ticksEl.setAttribute("aria-valuetext", fmt(cur) + " af " + fmt(dur));
-    }
-    function setPlaying(on){
-      box.classList.toggle("playing", on);
-      barPlay.setAttribute("aria-label", on ? "Pause" : "Afspil");
-    }
-    function toggle(){
-      if (audio.paused){ var p = audio.play(); if (p && p.catch) p.catch(function(){}); } else audio.pause();
-    }
-    function seekRatio(r){
-      if (audio.duration && isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(1, r)) * audio.duration;
-    }
-    /* Husker hvor langt man er nået. Virker det ikke, kører alt videre uden. */
-    var canStore = (function(){ try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return true; } catch(e){ return false; } })();
-    var savedPos = 0, lastSave = 0;
-    if (canStore){ try { savedPos = parseFloat(localStorage.getItem(C.storeKey)) || 0; } catch(e){ savedPos = 0; } }
-    function savePos(){
-      if (!canStore) return;
-      try {
-        var cur = audio.currentTime, dur = audio.duration;
-        if (cur > 5 && dur && cur < dur - 5) localStorage.setItem(C.storeKey, String(Math.floor(cur)));
-        else localStorage.removeItem(C.storeKey);
-      } catch(e){}
-    }
-    function clearPos(){ if (!canStore) return; try { localStorage.removeItem(C.storeKey); } catch(e){} }
-
-    audio.addEventListener("loadedmetadata", function(){
-      if (isFinite(audio.duration)) durTimeEl.textContent = fmt(audio.duration);
-      if (savedPos > 5 && audio.duration && savedPos < audio.duration - 5 && audio.currentTime < 1){
-        try { audio.currentTime = savedPos; } catch(e){}
-        curTimeEl.textContent = fmt(savedPos);
-        resumeTimeEl.textContent = fmt(savedPos);
-        resumeBar.classList.add("show");
-      }
-      updateTicks();
-    });
-    audio.addEventListener("timeupdate", function(){
-      curTimeEl.textContent = fmt(audio.currentTime);
-      updateTicks();
-      var now = Date.now();
-      if (now - lastSave > 4000){ lastSave = now; savePos(); }
-    });
-    audio.addEventListener("play", function(){ setPlaying(true); });
-    audio.addEventListener("pause", function(){ setPlaying(false); savePos(); });
-    audio.addEventListener("ended", function(){ setPlaying(false); resumeBar.classList.remove("show"); clearPos(); });
-    window.addEventListener("pagehide", savePos);
-    document.addEventListener("visibilitychange", function(){ if (document.hidden) savePos(); });
-
-    barPlay.addEventListener("click", toggle);
-    restartBtn.addEventListener("click", function(){
-      try { audio.currentTime = 0; } catch(e){}
-      curTimeEl.textContent = "0:00"; updateTicks();
-      resumeBar.classList.remove("show"); clearPos();
-    });
-    ticksEl.addEventListener("click", function(e){
-      var rect = ticksEl.getBoundingClientRect();
-      seekRatio((e.clientX - rect.left) / rect.width);
-    });
-    ticksEl.addEventListener("keydown", function(e){
-      if (!audio.duration || !isFinite(audio.duration)) return;
-      var step = 0;
-      if (e.key === "ArrowRight" || e.key === "ArrowUp") step = 10;
-      else if (e.key === "ArrowLeft" || e.key === "ArrowDown") step = -10;
-      else if (e.key === "PageUp") step = 60;
-      else if (e.key === "PageDown") step = -60;
-      else if (e.key === " " || e.key === "Enter"){ e.preventDefault(); toggle(); return; }
-      else if (e.key === "Home"){ e.preventDefault(); audio.currentTime = 0; return; }
-      else if (e.key === "End"){ e.preventDefault(); audio.currentTime = Math.max(0, audio.duration - 1); return; }
-      if (step){ e.preventDefault(); audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + step)); }
-    });
-    updateTicks();
-  }
-
   document.addEventListener("click", function(e){
     var b = e.target.closest ? e.target.closest("button[data-t]") : null;
     if (!b) return;
@@ -1451,22 +1348,7 @@ function buildPageHTML(s, opts){
       + (s.videoFileUrl ? '<a href="' + escapeHtml(s.videoFileUrl) + '" target="_blank" rel="noopener">Åbn videofilen for sig selv</a>' : '') + '</p>'
       + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
   } else if (isAudio){
-    // Samme afspiller som i Lydfortælling · Bygger: rund afspil-knap, streg-bjælke,
-    // tider og "Du er nået til …" med Start forfra.
-    const durTxt = s.audioDuration ? fmtClock(s.audioDuration) : '0:00';
-    playerBlock += '<div class="audiobox" id="audiobox">'
-      + '<div class="player-row">'
-      + '<button class="playbtn" id="barPlay" type="button" aria-label="Afspil">'
-      + '<svg class="b-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>'
-      + '<svg class="b-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>'
-      + '</button>'
-      + '<div class="scrubwrap">'
-      + '<div class="ticks" id="ticks" tabindex="0" role="slider" aria-label="Hvor langt i udsendelsen" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00"></div>'
-      + '<div class="times"><span id="curTime">0:00</span><span id="durTime">' + durTxt + '</span></div>'
-      + '</div></div>'
-      + '<div class="resume" id="resumeBar"><span>Du er nået til <strong id="resumeTime">0:00</strong></span>'
-      + '<button class="restart-btn" id="restartBtn" type="button">Start forfra</button></div>'
-      + '<audio id="lyd" preload="' + (embedded ? 'auto' : 'metadata') + '"'
+    playerBlock += '<div class="audiobox"><audio id="lyd" controls preload="' + (embedded ? 'auto' : 'metadata') + '"'
       + (audioSrc ? ' src="' + (embedded ? audioSrc : escapeHtml(audioSrc)) + '"' : '')
       + '>Din browser kan ikke afspille lyd.</audio></div>';
     const links = [];
@@ -1554,7 +1436,7 @@ function buildPageHTML(s, opts){
 
   const ogDesc = stripMdToPlain(s.text, 200);
   const shareUrl = s.shareImage.trim();
-  const runtimeConfig = { storeKey: 'mediekort:' + (dc.identifier || fileName) + ':pos', mode: s.mode, id: s.mode === 'video' ? id : '', title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
+  const runtimeConfig = { mode: s.mode, id: s.mode === 'video' ? id : '', title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
   const taellerBlock = (s.taellerBlock && !isPreview) ? s.taellerBlock + '\n' : '';
   const aT = lighten(t.accent, 0.5);
 
@@ -1575,7 +1457,6 @@ function buildPageHTML(s, opts){
 + '  --paper:' + t.paper + '; --surface:' + t.surface + '; --ink:' + t.ink + '; --body:' + t.body + ';\n'
 + '  --muted:' + t.muted + '; --line:' + t.line + '; --quote:' + t.quote + ';\n'
 + '  --tint:' + hexToRgba(t.accent, 0.07) + '; --tint-line:' + hexToRgba(t.accent, 0.35) + ';\n'
-+ '  --tick:' + hexToRgba(t.onAccent, 0.32) + ';\n'
 + '  --shadow:rgba(30,25,15,0.10);\n'
 + '  --sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;\n'
 + '  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;\n'
@@ -1626,25 +1507,8 @@ function buildPageHTML(s, opts){
 + '.player.playing .play .i-play{display:none;}\n'
 + '.player.playing .play .i-pause{display:block;}\n'
 + '.player.playing .play span{opacity:.55;}\n'
-+ '.audiobox{position:sticky; top:64px; z-index:20; background:var(--accent); color:var(--on-accent); border-radius:12px; padding:14px 16px 16px; margin-top:12px; box-shadow:0 4px 14px var(--shadow);}\n'
-+ '.audiobox audio{display:none;}\n'
-+ '.player-row{display:flex; align-items:center; gap:14px;}\n'
-+ '.playbtn{width:52px; height:52px; min-width:52px; border-radius:50%; background:var(--on-accent); color:var(--accent); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;}\n'
-+ '.playbtn svg{width:20px; height:20px;}\n'
-+ '.playbtn .b-pause{display:none;}\n'
-+ '.audiobox.playing .playbtn .b-play{display:none;}\n'
-+ '.audiobox.playing .playbtn .b-pause{display:block;}\n'
-+ '.playbtn:focus-visible, .ticks:focus-visible, .restart-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:4px;}\n'
-+ '.scrubwrap{flex:1; min-width:0;}\n'
-+ '.ticks{display:flex; align-items:flex-end; gap:2px; height:28px; cursor:pointer; border-radius:3px; touch-action:none;}\n'
-+ '.tick{flex:1; background:var(--tick); border-radius:1px; min-width:2px;}\n'
-+ '.tick.played{background:var(--on-accent);}\n'
-+ '.times{display:flex; justify-content:space-between; font-size:0.9em; margin-top:6px; font-variant-numeric:tabular-nums;}\n'
-+ '.resume{display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:11px; border-top:1px solid var(--tick); font-size:0.95em;}\n'
-+ '.resume.show{display:flex;}\n'
-+ '.resume strong{font-variant-numeric:tabular-nums;}\n'
-+ '.restart-btn{background:transparent; border:2px solid var(--on-accent); color:var(--on-accent); font-size:0.92em; font-weight:700; padding:0 16px; min-height:44px; border-radius:999px; cursor:pointer;}\n'
-+ '.restart-btn:hover{background:var(--on-accent); color:var(--accent);}\n'
++ '.audiobox{position:sticky; top:64px; z-index:20; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:12px; box-shadow:0 3px 10px var(--shadow);}\n'
++ '.audiobox audio{width:100%; display:block;}\n'
 + '.fallback{font-size:0.85em; color:var(--muted); margin:10px 0 0;}\n'
 + '.fallback .lokal, .fallback .media-err{display:none;}\n'
 + '.is-local .fallback .lokal, .media-error .fallback .media-err{display:inline;}\n'
