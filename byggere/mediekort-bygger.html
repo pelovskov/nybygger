@@ -132,7 +132,7 @@
 
 <div class="topbar">
   <h1>Mediekort · Bygger</h1>
-  <span>Lav et kort til en video på YouTube eller en podcast, med kapitler og udskrift · kører lokalt, ingen server · version 1.0</span>
+  <span>Lav et kort til en video eller en podcast, med kapitler og udskrift · kører lokalt, ingen server · version 1.1</span>
 </div>
 
 <div class="layout">
@@ -190,6 +190,11 @@
           <div class="tname">Video på YouTube</div>
           <div class="tsub">Videoen bliver på YouTube. Resten af kortet virker også uden internet.</div>
         </label>
+        <label class="mode-option" data-mode="videofile">
+          <input type="radio" name="mode" value="videofile">
+          <div class="tname">Videofil (link)</div>
+          <div class="tsub">En mp4-fil fra fx pCloud eller jeres webhotel, som ikke skal på YouTube.</div>
+        </label>
         <label class="mode-option" data-mode="audio">
           <input type="radio" name="mode" value="audio">
           <div class="tname">Lydfil / podcast</div>
@@ -207,6 +212,15 @@
         <div class="btnrow">
           <button type="button" class="sbtn" id="btnOembed" disabled>Hent titel og kanal fra YouTube</button>
         </div>
+      </div>
+    </div>
+
+    <div id="videoFileFields" hidden>
+      <div class="field">
+        <label for="fVideoFileUrl">Adresse på videofilen</label>
+        <input type="url" id="fVideoFileUrl" placeholder="https://filedn.eu/…/film.mp4">
+        <div class="hint">Brug den direkte adresse til filen, fx et link fra en offentlig mappe i pCloud. Prøv adressen i browserens adresselinje: afspilles videoen der, virker den også i kortet. Værktøjet prøver videoen af og viser varighed og størrelse. Videoen lægges ikke ind i kortet, fordi videofiler er for store til det.</div>
+        <div class="status" id="videoFileStatus"></div>
       </div>
     </div>
 
@@ -401,7 +415,7 @@
 
 <script>
 /* =======================================================================
-   Mediekort · Bygger — version 1.0
+   Mediekort · Bygger — version 1.1 (videofil fra fx pCloud tilføjet)
    Følger Builder-standard 1.2 (september 2026). Reference: Sidebygger 1.4.
    Outputformat: "mediekort", builderVersion 1.
    ======================================================================= */
@@ -412,6 +426,7 @@ const state = {
   mode:'video',                // 'video' eller 'audio'
   videoId:'',
   audioUrl:'', audioDuration:0,
+  videoFileUrl:'', videoDuration:0,
   audioBlob:null, audioName:'', audioBlobUrl:'',
   kicker:'', title:'', location:'', shareImage:'',
   poster:'', posterAlt:'',
@@ -748,7 +763,7 @@ function watchUrl(id){ return 'https://www.youtube.com/watch?v=' + id; }
 // Finder den direkte lydadresse. En Buzzsprout-episodeadresse får .mp3 sat på,
 // som i Buzzsprouts eget RSS-feed.
 function resolveAudioUrl(raw){
-  let s = String(raw || '').trim();
+  let s = cleanUrl(raw);
   if (!s) return { url:'', note:'' };
   if (/\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|#|$)/i.test(s)) return { url:s, note:'' };
   if (/buzzsprout\.com\/\d+\/(episodes\/)?\d+/i.test(s)){
@@ -758,33 +773,69 @@ function resolveAudioUrl(raw){
   return { url:s, note:'Adressen ender ikke på .mp3.' };
 }
 
-let audioTestToken = 0;
-function testAudioUrl(){
-  const st = $('audioUrlStatus');
-  const r = resolveAudioUrl($('fAudioUrl').value);
-  state.audioUrl = r.url;
-  const token = ++audioTestToken;
-  if (!r.url){ st.textContent = ''; st.className = 'status'; state.audioDuration = 0; schedulePreview(); return; }
-  st.textContent = (r.note ? r.note + ' ' : '') + 'Prøver lyden af …';
-  st.className = 'status pending';
-  const a = new Audio();
-  a.preload = 'metadata';
-  a.onloadedmetadata = () => {
-    if (token !== audioTestToken) return;
-    state.audioDuration = isFinite(a.duration) ? a.duration : 0;
-    st.textContent = (r.note ? r.note + ' ' : '') + 'Lyden virker' + (state.audioDuration ? ' — varighed ' + fmtDuration(state.audioDuration) : '') + '.';
-    st.className = 'status';
-    a.src = '';
-    renderPreview();
-  };
-  a.onerror = () => {
-    if (token !== audioTestToken) return;
-    st.innerHTML = (r.note ? escapeHtml(r.note) + ' ' : '') + 'Lyden kunne ikke hentes fra <a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">' + escapeHtml(r.url) + '</a>. Tjek adressen, eller brug den direkte mp3-adresse.';
-    st.className = 'status bad';
-  };
-  a.src = r.url;
-  schedulePreview();
+// Mellemrum og danske bogstaver i en adresse kodes, så browseren kan bruge den.
+function cleanUrl(u){
+  u = String(u || '').trim();
+  if (/\s/.test(u) && u.indexOf('%') === -1){ try { u = encodeURI(u); } catch(e){} }
+  return u;
 }
+
+function resolveVideoUrl(raw){
+  const s = cleanUrl(raw);
+  if (!s) return { url:'', note:'' };
+  if (parseYouTube(s)) return { url:s, note:'Det er en YouTube-adresse — vælg «Video på YouTube» øverst i stedet.' };
+  return { url:s, note:'' };
+}
+
+// Prøver en lyd- eller videoadresse af. Når prøven er slut, fjernes lytterne,
+// før testafspilleren ryddes, så oprydningen ikke bliver meldt som en fejl.
+const mediaTestToken = { audio:0, videofile:0 };
+function testMedia(kind){
+  const isA = kind === 'audio';
+  const st = $(isA ? 'audioUrlStatus' : 'videoFileStatus');
+  const r = isA ? resolveAudioUrl($('fAudioUrl').value) : resolveVideoUrl($('fVideoFileUrl').value);
+  if (isA) state.audioUrl = r.url; else state.videoFileUrl = r.url;
+  const token = ++mediaTestToken[kind];
+  const pre = r.note ? r.note + ' ' : '';
+  if (!r.url){
+    st.textContent = ''; st.className = 'status';
+    if (isA) state.audioDuration = 0; else state.videoDuration = 0;
+    renderPreview(); return;
+  }
+  st.textContent = pre + (isA ? 'Prøver lyden af …' : 'Prøver videoen af …');
+  st.className = 'status pending';
+  const el = document.createElement(isA ? 'audio' : 'video');
+  el.preload = 'metadata';
+  el.muted = true;
+  let done = false;
+  function finish(result){
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    el.onloadedmetadata = null; el.onerror = null;
+    try { el.removeAttribute('src'); el.load(); } catch(e){}
+    if (token !== mediaTestToken[kind]) return;
+    if (result === 'ok'){
+      const d = isFinite(el.duration) ? el.duration : 0;
+      if (isA) state.audioDuration = d; else state.videoDuration = d;
+      const dim = (!isA && el.videoWidth) ? ', ' + el.videoWidth + ' × ' + el.videoHeight + ' pixel' : '';
+      st.textContent = pre + (isA ? 'Lyden virker' : 'Videoen virker') + (d ? ' — varighed ' + fmtDuration(d) : '') + dim + '.';
+      st.className = 'status';
+    } else {
+      const what = isA ? 'Lyden' : 'Videoen';
+      st.innerHTML = escapeHtml(pre) + what + (result === 'timeout' ? ' svarede ikke inden 15 sekunder' : ' kunne ikke prøves af herfra')
+        + '. Åbn <a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">adressen</a> i et nyt faneblad: afspilles den der, er den i orden, og kortet kan godt laves.';
+      st.className = 'status pending';
+    }
+    renderPreview();
+  }
+  const timer = setTimeout(() => finish('timeout'), 15000);
+  el.onloadedmetadata = () => finish('ok');
+  el.onerror = () => finish('error');
+  el.src = r.url;
+  renderPreview();
+}
+function testAudioUrl(){ testMedia('audio'); }
 
 /* ---------- Plakatbillede: 16:9, højst 1600 px, JPEG 0,82 ---------- */
 
@@ -994,7 +1045,7 @@ function syncAutoDc(){
   if (!dcTouched.coverage) $('dcCoverage').value = state.location.trim();
   if (!dcTouched.type) $('dcType').value = state.mode === 'audio' ? 'Sound' : 'MovingImage';
   if (!dcTouched.source){
-    $('dcSource').value = state.mode === 'audio' ? state.audioUrl : (state.videoId ? watchUrl(state.videoId) : '');
+    $('dcSource').value = state.mode === 'audio' ? state.audioUrl : state.mode === 'videofile' ? state.videoFileUrl : (state.videoId ? watchUrl(state.videoId) : '');
   }
   if (!dcTouched.identifier){
     const prefix = AREA_PREFIX[$('dcPublisher').value];
@@ -1071,7 +1122,7 @@ function drawnPoster(s, t){
   } else {
     deco = '<path fill="' + fg + '" opacity=".10" d="M0 900V610h120v-60h70v60h90V520l60-50 60 50v90h110V560h80v50h120V470l40-90 40 90v140h100V540h90v70h140V500l70-60 70 60v110h130V570h90v40h150v290z"/>';
   }
-  return '<svg class="drawn" viewBox="0 0 1600 900" aria-hidden="true" preserveAspectRatio="xMidYMid slice">'
+  return '<svg xmlns="http://www.w3.org/2000/svg" class="drawn" viewBox="0 0 1600 900" aria-hidden="true" preserveAspectRatio="xMidYMid slice">'
     + '<rect width="1600" height="900" fill="' + bg + '"/>' + deco
     + '<g fill="' + fg + '" font-family="Georgia,serif" text-anchor="middle">'
     + (s.kicker ? '<text x="800" y="' + Math.round(startY - size - 10) + '" font-size="40" opacity=".8">' + escapeHtml(s.kicker) + '</text>' : '')
@@ -1104,7 +1155,7 @@ function mediekortRuntime(C){
   toTop.addEventListener("click", function(){ window.scrollTo({ top:0, behavior:"smooth" }); });
 
   /* --- Afspilleren --- */
-  var player = byId("player"), playBtn = byId("playBtn"), audio = byId("lyd"), ytLink = byId("ytLink");
+  var player = byId("player"), playBtn = byId("playBtn"), audio = byId("lyd") || byId("vid"), ytLink = byId("ytLink");
   var canEmbed = /^https?:$/.test(location.protocol);
   if (C.mode === "video" && !canEmbed) body.classList.add("is-local");
   function net(){ body.classList.toggle("is-offline", !navigator.onLine); }
@@ -1148,6 +1199,10 @@ function mediekortRuntime(C){
   }
   function seek(t){
     if (C.mode === "audio") playAudioAt(t);
+    else if (C.mode === "videofile"){
+      playAudioAt(t);
+      player.scrollIntoView({ behavior:"smooth", block:"center" });
+    }
     else {
       playVideo(t);
       if (canEmbed && navigator.onLine) player.scrollIntoView({ behavior:"smooth", block:"center" });
@@ -1179,7 +1234,7 @@ function mediekortRuntime(C){
         if (b === cur) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
       });
     });
-    audio.addEventListener("error", function(){ body.classList.add("audio-error"); });
+    audio.addEventListener("error", function(){ body.classList.add("media-error"); });
   }
 
   document.addEventListener("click", function(e){
@@ -1255,6 +1310,7 @@ function buildPageHTML(s, opts){
   const pageTitle = s.title || 'Mediekort';
   const fileName = slugify(s.title, 'mediekort') + '.html';
   const isAudio = s.mode === 'audio';
+  const isFile = s.mode === 'videofile';
   const id = s.videoId;
   const watch = id ? watchUrl(id) : '';
   const chapters = parseChapters(s.chaptersRaw).list;
@@ -1282,7 +1338,16 @@ function buildPageHTML(s, opts){
   let playerBlock = '<div class="player" id="player">' + posterEl
     + '<button class="play" id="playBtn" type="button" aria-label="' + playLabel + '"><span>' + ICON_PLAY + (isAudio ? ICON_PAUSE : '') + '</span></button>'
     + '</div>';
-  if (isAudio){
+  if (isFile){
+    const posterSrc = s.poster || ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(drawnPoster(s, t)));
+    playerBlock = '<div class="player vidfile" id="player"><video id="vid" controls playsinline preload="metadata"'
+      + ' aria-label="' + escapeHtml(pageTitle) + '" poster="' + escapeHtml(posterSrc) + '"'
+      + (s.videoFileUrl ? ' src="' + escapeHtml(s.videoFileUrl) + '"' : '')
+      + '>Din browser kan ikke afspille video.</video></div>'
+      + '<p class="fallback"><span class="media-err">Videoen kunne ikke hentes lige nu. </span>'
+      + (s.videoFileUrl ? '<a href="' + escapeHtml(s.videoFileUrl) + '" target="_blank" rel="noopener">Åbn videofilen for sig selv</a>' : '') + '</p>'
+      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+  } else if (isAudio){
     playerBlock += '<div class="audiobox"><audio id="lyd" controls preload="' + (embedded ? 'auto' : 'metadata') + '"'
       + (audioSrc ? ' src="' + (embedded ? audioSrc : escapeHtml(audioSrc)) + '"' : '')
       + '>Din browser kan ikke afspille lyd.</audio></div>';
@@ -1290,7 +1355,7 @@ function buildPageHTML(s, opts){
     if (s.audioUrl) links.push('<a href="' + escapeHtml(s.audioUrl) + '" target="_blank" rel="noopener">Åbn lydfilen for sig selv</a>');
     playerBlock += '<p class="fallback">'
       + (embedded ? 'Lyden ligger inde i denne fil og kan afspilles uden internet. ' : '')
-      + '<span class="audio-err">Lyden kunne ikke hentes lige nu. </span>'
+      + '<span class="media-err">Lyden kunne ikke hentes lige nu. </span>'
       + links.join('') + '</p>';
     if (!embedded) playerBlock += '<div class="offline" role="status">Du er ikke på internettet, så lyden kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
   } else {
@@ -1324,11 +1389,13 @@ function buildPageHTML(s, opts){
 
   const ctas = s.ctas.filter(c => c.text.trim() && c.url.trim());
   const ctaParts = [];
-  if (!isAudio && watch) ctaParts.push('<a class="cta-btn ghost" href="' + escapeHtml(watch) + '" target="_blank" rel="noopener">Se på YouTube</a>');
+  if (s.mode === 'video' && watch) ctaParts.push('<a class="cta-btn ghost" href="' + escapeHtml(watch) + '" target="_blank" rel="noopener">Se på YouTube</a>');
   ctas.forEach(c => ctaParts.push('<a class="cta-btn" href="' + escapeHtml(c.url.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(c.text.trim()) + '</a>'));
   const ctaBlock = ctaParts.length ? '<div class="cta-wrap">' + ctaParts.join('') + '</div>' : '';
 
-  const saveNote = isAudio
+  const saveNote = isFile
+    ? 'Et mediekort med en video. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Videoen hentes fra nettet.'
+    : isAudio
     ? (embedded ? 'Et mediekort med en podcast. Gemmer hele kortet som én fil på din egen computer – lyden, beskrivelsen, tidsstemplerne og udskriften følger med.'
                 : 'Et mediekort med en podcast. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Lyden hentes fra nettet.')
     : 'Et mediekort med en video. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Videoen bliver på YouTube.';
@@ -1345,13 +1412,15 @@ function buildPageHTML(s, opts){
   const metaLine = [];
   if (s.location.trim()) metaLine.push(escapeHtml(s.location.trim()));
   if (s.audioDuration && isAudio) metaLine.push('Varighed ' + fmtDuration(s.audioDuration));
+  if (s.videoDuration && isFile) metaLine.push('Varighed ' + fmtDuration(s.videoDuration));
   const dotsBlock = s.theme === 'roskildetv'
     ? '<div class="dots" aria-hidden="true">' + RTV_DOTS.map(c => '<i style="background:' + c + '"></i>').join('') + '</div>' : '';
 
   const sourceData = {
     format:'mediekort', builderVersion:BUILDER_VERSION,
     theme: s.theme, mode: s.mode,
-    videoId: isAudio ? '' : id, videoUrl: isAudio ? '' : watch,
+    videoId: s.mode === 'video' ? id : '', videoUrl: s.mode === 'video' ? watch : '',
+    videoFileUrl: isFile ? s.videoFileUrl : '', videoDuration: isFile ? Math.round(s.videoDuration || 0) : 0,
     audioUrl: isAudio ? s.audioUrl : '', audioEmbedded: embedded, audioName: embedded ? s.audioName : '',
     audioDuration: isAudio ? Math.round(s.audioDuration || 0) : 0,
     kicker: s.kicker, title: s.title, location: s.location, shareImage: s.shareImage,
@@ -1367,7 +1436,7 @@ function buildPageHTML(s, opts){
 
   const ogDesc = stripMdToPlain(s.text, 200);
   const shareUrl = s.shareImage.trim();
-  const runtimeConfig = { mode: s.mode, id: isAudio ? '' : id, title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
+  const runtimeConfig = { mode: s.mode, id: s.mode === 'video' ? id : '', title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
   const taellerBlock = (s.taellerBlock && !isPreview) ? s.taellerBlock + '\n' : '';
   const aT = lighten(t.accent, 0.5);
 
@@ -1441,8 +1510,10 @@ function buildPageHTML(s, opts){
 + '.audiobox{position:sticky; top:64px; z-index:20; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:12px; box-shadow:0 3px 10px var(--shadow);}\n'
 + '.audiobox audio{width:100%; display:block;}\n'
 + '.fallback{font-size:0.85em; color:var(--muted); margin:10px 0 0;}\n'
-+ '.fallback .lokal, .fallback .audio-err{display:none;}\n'
-+ '.is-local .fallback .lokal, .audio-error .fallback .audio-err{display:inline;}\n'
++ '.fallback .lokal, .fallback .media-err{display:none;}\n'
++ '.is-local .fallback .lokal, .media-error .fallback .media-err{display:inline;}\n'
++ '.player.vidfile{background:#000;}\n'
++ '.player video{position:absolute; inset:0; width:100%; height:100%; background:#000; display:block;}\n'
 + '.offline{display:none; background:var(--tint); border-left:4px solid var(--accent); padding:12px 16px; margin-top:12px; font-size:0.95em; color:var(--ink);}\n'
 + '.is-offline .offline{display:block;}\n'
 + '.cols{display:grid; grid-template-columns:1fr; gap:30px; margin-top:34px;}\n'
@@ -1550,7 +1621,9 @@ function readForm(){
 }
 
 function hasMedia(){
-  return state.mode === 'audio' ? !!(state.audioUrl || state.audioBlob) : !!state.videoId;
+  if (state.mode === 'audio') return !!(state.audioUrl || state.audioBlob);
+  if (state.mode === 'videofile') return !!state.videoFileUrl;
+  return !!state.videoId;
 }
 
 function updateSizeBar(){
@@ -1578,15 +1651,18 @@ function updateChapCheck(){
 }
 
 function setMode(mode){
-  state.mode = mode === 'audio' ? 'audio' : 'video';
+  state.mode = (mode === 'audio' || mode === 'videofile') ? mode : 'video';
   document.querySelectorAll('#modePicker input').forEach(r => { r.checked = (r.value === state.mode); });
   document.querySelectorAll('#modePicker .mode-option').forEach(o => o.classList.toggle('selected', o.dataset.mode === state.mode));
   $('videoFields').hidden = state.mode !== 'video';
   $('audioFields').hidden = state.mode !== 'audio';
+  $('videoFileFields').hidden = state.mode !== 'videofile';
   $('shareYtRow').hidden = state.mode !== 'video';
   $('btnThumb').hidden = state.mode !== 'video';
   $('previewNote').textContent = state.mode === 'video'
     ? 'I forhåndsvisningen åbner afspil og tidsstempler videoen på YouTube i et nyt vindue. Lagt på en hjemmeside afspiller kortet videoen direkte på siden.'
+    : state.mode === 'videofile'
+    ? 'Videoen kan afspilles direkte her i forhåndsvisningen, og tidsstemplerne virker. Det gør de også, når kortet åbnes fra din egen computer — så længe der er internet.'
     : 'Lyden kan afspilles direkte her i forhåndsvisningen, og tidsstemplerne virker. Det gør de også, når kortet åbnes fra din egen computer.';
   renderPreview();
 }
@@ -1625,6 +1701,7 @@ function onUrlInput(){
   state.videoId = id;
   if (!raw){ st.textContent = ''; st.className = 'status'; }
   else if (id){ st.textContent = 'Forstået — video-id ' + id + '.'; st.className = 'status'; }
+  else if (/\.(mp4|m4v|webm|mov)(\?|#|$)/i.test(raw)){ st.textContent = 'Det ligner en videofil og ikke YouTube. Vælg «Videofil (link)» øverst.'; st.className = 'status bad'; }
   else { st.textContent = 'Det ligner ikke en YouTube-adresse. Den skal indeholde youtube.com eller youtu.be.'; st.className = 'status bad'; }
   renderPreview();
 }
@@ -1640,6 +1717,8 @@ $('fChapters').addEventListener('input', () => { readForm(); updateChapCheck(); 
 $('fUrl').addEventListener('input', onUrlInput);
 let audioUrlTimer = null;
 $('fAudioUrl').addEventListener('input', () => { clearTimeout(audioUrlTimer); audioUrlTimer = setTimeout(testAudioUrl, 600); });
+let videoUrlTimer = null;
+$('fVideoFileUrl').addEventListener('input', () => { clearTimeout(videoUrlTimer); videoUrlTimer = setTimeout(() => testMedia('videofile'), 600); });
 
 DC_FIELDS.forEach(key => {
   const el = $(dcInputId(key));
@@ -1720,13 +1799,16 @@ $('loadPage').addEventListener('change', async (e) => {
     if (!data.builderVersion || data.builderVersion < BUILDER_VERSION) return reject('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.');
 
     selectTheme(data.theme || 'original');
-    state.mode = data.mode === 'audio' ? 'audio' : 'video';
+    state.mode = (data.mode === 'audio' || data.mode === 'videofile') ? data.mode : 'video';
 
     $('fUrl').value = data.videoUrl || (data.videoId ? watchUrl(data.videoId) : '');
     state.videoId = parseYouTube($('fUrl').value);
     $('fAudioUrl').value = data.audioUrl || '';
     state.audioUrl = data.audioUrl || '';
     state.audioDuration = data.audioDuration || 0;
+    $('fVideoFileUrl').value = data.videoFileUrl || '';
+    state.videoFileUrl = data.videoFileUrl || '';
+    state.videoDuration = data.videoDuration || 0;
 
     $('fKicker').value = data.kicker || '';
     $('fTitle').value = data.title || '';
@@ -1775,6 +1857,7 @@ $('loadPage').addEventListener('change', async (e) => {
     setMode(state.mode);
     if (state.mode === 'video') onUrlInput();
     if (state.mode === 'audio' && state.audioUrl) testAudioUrl();
+    if (state.mode === 'videofile' && state.videoFileUrl) testMedia('videofile');
 
     st.textContent = 'Indlæst: ' + file.name
       + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
@@ -1822,7 +1905,7 @@ $('generateBtn').addEventListener('click', async () => {
   try {
     readForm(); syncAutoDc();
     if (!hasMedia()){
-      msg.textContent = state.mode === 'audio' ? 'Skriv adressen på lydfilen, eller vælg en lydfil, først.' : 'Skriv adressen på YouTube-videoen først.';
+      msg.textContent = state.mode === 'audio' ? 'Skriv adressen på lydfilen, eller vælg en lydfil, først.' : state.mode === 'videofile' ? 'Skriv adressen på videofilen først.' : 'Skriv adressen på YouTube-videoen først.';
       msg.className = 'msg err';
       return;
     }
