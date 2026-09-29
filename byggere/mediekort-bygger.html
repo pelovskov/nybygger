@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mediekort · Bygger</title>
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field label, .field .flabel{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .field .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .field .hint code, .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none !important; letter-spacing:0 !important; font-size:14.5px !important; line-height:1.45; color:var(--ink) !important; }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--rust); cursor:pointer; }
+  .check span strong{ font-weight:650; }
+  input[type=text], input[type=url], textarea, select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  textarea.small{ min-height:96px; }
+  textarea.mono{ font-family:ui-monospace, Menlo, Consolas, monospace; font-size:15.5px; }
+  input:focus, textarea:focus, select:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  button:focus-visible, summary:focus-visible, .theme-option:focus-within, .mode-option:focus-within{ outline:2px solid var(--rust); outline-offset:2px; }
+  .filebox{ border:1px dashed var(--line); border-radius:3px; padding:14px; background:#f7f3e7; font-size:14.5px; }
+  .filebox input[type=file]{ font-size:14px; }
+  .status{ margin-top:9px; font-size:13.5px; color:var(--moss); font-weight:600; line-height:1.5; }
+  .status.pending{ color:#7A6522; }
+  .status.bad{ color:#7d2c1a; }
+  .status a{ color:var(--rust); }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+  .btnrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .sbtn{
+    font-family:var(--sans); font-size:14.5px; font-weight:600; min-height:44px; padding:9px 15px;
+    border:2px solid var(--rust); background:#fff; color:var(--rust); border-radius:4px; cursor:pointer;
+  }
+  .sbtn:hover:not(:disabled){ background:var(--rust); color:#fdf8ee; }
+  .sbtn:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+
+  .theme-picker, .mode-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+  .theme-option, .mode-option{
+    flex:1; min-width:132px; position:relative; border:2px solid var(--line); border-radius:8px;
+    padding:12px 12px 11px; cursor:pointer; background:#fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .theme-option:hover, .mode-option:hover{ border-color:#a89f89; }
+  .theme-option input, .mode-option input{ position:absolute; top:11px; right:11px; width:19px; height:19px; margin:0; accent-color:var(--rust); cursor:pointer; }
+  .theme-option .swatches{ display:flex; gap:6px; margin-bottom:10px; }
+  .theme-option .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+  .theme-option .tname, .mode-option .tname{ font-size:14.5px; font-weight:600; color:var(--ink); padding-right:22px; text-transform:none; letter-spacing:0; }
+  .mode-option .tsub{ font-size:13.5px; color:var(--hint); margin-top:4px; line-height:1.45; text-transform:none; letter-spacing:0; font-weight:400; }
+  .theme-option.selected{ border-color:var(--theme-accent, var(--rust)); box-shadow: 0 0 0 2px var(--theme-accent, var(--rust)) inset, 0 2px 8px rgba(30,25,15,0.08); }
+  .mode-option.selected{ border-color:var(--rust); box-shadow: 0 0 0 2px var(--rust) inset, 0 2px 8px rgba(30,25,15,0.08); }
+
+  .posterrow{ display:flex; gap:14px; align-items:flex-start; margin-top:12px; }
+  .posterrow img{ width:160px; aspect-ratio:16/9; object-fit:cover; border:1px solid var(--line); border-radius:4px; background:var(--paper-dim); }
+  .posterrow .meta{ font-size:13.5px; color:var(--hint); line-height:1.5; }
+  .posterrow .meta b{ color:var(--ink); }
+
+  .chapcheck{ margin:10px 0 0; padding:0; list-style:none; font-size:14px; }
+  .chapcheck li{ display:flex; gap:12px; padding:4px 0; border-bottom:1px solid var(--line); }
+  .chapcheck .t{ font-variant-numeric:tabular-nums; color:var(--rust); font-weight:600; min-width:4.2em; }
+  .chapcheck li.bad{ color:#7d2c1a; }
+
+  .sizebar{
+    border:1px solid var(--line); border-radius:4px; background:#f7f3e7;
+    padding:11px 14px; font-size:14px; color:var(--moss); margin-bottom:22px; font-weight:600;
+  }
+  .sizebar.warn{ background:#f7efd9; color:#7A6522; }
+  .sizebar.over{ background:#f4ded9; color:#7d2c1a; }
+
+  .generate-btn{
+    width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px;
+  }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4436; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+
+  details.dc{ border:1px solid var(--line); border-radius:4px; background:#f7f3e7; padding:14px 16px; margin-bottom:20px; }
+  details.dc summary{ cursor:pointer; font-size:14px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; padding:2px 0; min-height:28px; }
+  details.dc summary::marker{ color:var(--rust); }
+  details.dc[open] summary{ margin-bottom:12px; }
+  details.dc .panel-sub{ font-size:13.5px; color:var(--hint); margin:0 0 16px; line-height:1.55; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 16px; }
+  .field-grid .field{ margin-bottom:16px; }
+  .field-grid label{ text-transform:none; letter-spacing:0; font-size:14px; }
+  .field-grid label .hint{ display:block; font-size:13px; color:var(--hint); font-weight:400; margin-top:3px; line-height:1.5; }
+  .meta-btn{
+    width:100%; padding:12px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px; min-height:44px;
+  }
+  .meta-btn:hover{ background:#f2ecdd; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:14px; font-weight:600; }
+  .phone-frame{ background:#fbf8ef; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 8px 24px rgba(30,25,15,0.10); }
+  #previewFrame{ width:100%; height:660px; border:none; border-radius:6px; background:#fbf8ef; }
+  .preview-pane .note{ font-size:13.5px; color:var(--hint); line-height:1.55; margin:12px 2px 0; }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Mediekort · Bygger</h1>
+  <span>Lav et kort til en video på YouTube eller en podcast, med kapitler og udskrift · kører lokalt, ingen server · version 1.0</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <!-- 1. Indlæs -->
+    <div class="field">
+      <label for="loadPage">Indlæs eksisterende mediekort (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="loadPage" accept=".html,text/html">
+        <div class="status" id="loadStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg et mediekort (.html), som er lavet med denne udgave af værktøjet, for at rette i det. Alt kommer med: tekst, tidsstempler, udskrift, plakatbillede, lyd, tema og Dublin Core-felter. Videokort fra den gamle Videokort · Bygger kan ikke indlæses og laves om her.</div>
+    </div>
+
+    <!-- 2. Tema -->
+    <div class="field">
+      <span class="flabel">Tema</span>
+      <div class="theme-picker" id="themePicker">
+        <label class="theme-option" data-theme="original" style="--theme-accent:#9A4630">
+          <input type="radio" name="theme" value="original" checked>
+          <div class="swatches"><span class="swatch" style="background:#9A4630"></span><span class="swatch" style="background:#EDE7D8"></span></div>
+          <div class="tname">Oprindeligt</div>
+        </label>
+        <label class="theme-option" data-theme="historisk" style="--theme-accent:#385261">
+          <input type="radio" name="theme" value="historisk">
+          <div class="swatches"><span class="swatch" style="background:#385261"></span><span class="swatch" style="background:#6B7A5A"></span><span class="swatch" style="background:#F2F5F6"></span></div>
+          <div class="tname">Historisk Samfund</div>
+        </label>
+        <label class="theme-option" data-theme="lokalhistorisk2" style="--theme-accent:#9E2453">
+          <input type="radio" name="theme" value="lokalhistorisk2">
+          <div class="swatches"><span class="swatch" style="background:#9E2453"></span><span class="swatch" style="background:#FAF9F5"></span></div>
+          <div class="tname">Lokalhistorisk</div>
+        </label>
+        <label class="theme-option" data-theme="roedekors" style="--theme-accent:#E30A0B">
+          <input type="radio" name="theme" value="roedekors">
+          <div class="swatches"><span class="swatch" style="background:#E30A0B"></span><span class="swatch" style="background:#FFFFFF"></span></div>
+          <div class="tname">Røde Kors</div>
+        </label>
+        <label class="theme-option" data-theme="roskildetv" style="--theme-accent:#B03035">
+          <input type="radio" name="theme" value="roskildetv">
+          <div class="swatches"><span class="swatch" style="background:#B03035"></span><span class="swatch" style="background:conic-gradient(#4DB0E8 0% 17%, #3576BA 17% 33%, #8E2D62 33% 50%, #B03035 50% 67%, #E8803A 67% 83%, #EFAF45 83% 100%)"></span></div>
+          <div class="tname">Roskilde TV</div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 3. Indhold -->
+    <div class="sectionhead">Hvad skal kortet vise?</div>
+
+    <div class="field">
+      <div class="mode-picker" id="modePicker">
+        <label class="mode-option selected" data-mode="video">
+          <input type="radio" name="mode" value="video" checked>
+          <div class="tname">Video på YouTube</div>
+          <div class="tsub">Videoen bliver på YouTube. Resten af kortet virker også uden internet.</div>
+        </label>
+        <label class="mode-option" data-mode="audio">
+          <input type="radio" name="mode" value="audio">
+          <div class="tname">Lydfil / podcast</div>
+          <div class="tsub">Fra jeres eget webhotel eller Buzzsprout. Kan også lægges ind i kortet.</div>
+        </label>
+      </div>
+    </div>
+
+    <div id="videoFields">
+      <div class="field">
+        <label for="fUrl">Adresse på YouTube</label>
+        <input type="url" id="fUrl" placeholder="https://www.youtube.com/watch?v=…">
+        <div class="hint">Kopiér adressen fra browserens adresselinje eller fra Del-knappen under videoen. Alle slags YouTube-adresser virker.</div>
+        <div class="status" id="urlStatus"></div>
+        <div class="btnrow">
+          <button type="button" class="sbtn" id="btnOembed" disabled>Hent titel og kanal fra YouTube</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="audioFields" hidden>
+      <div class="field">
+        <label for="fAudioUrl">Adresse på lydfilen</label>
+        <input type="url" id="fAudioUrl" placeholder="https://…/episode.mp3 eller en Buzzsprout-episode">
+        <div class="hint">Skriv den direkte adresse til mp3-filen på jeres webhotel. Fra Buzzsprout kan du indsætte adressen på selve episoden, så finder værktøjet selv mp3-filen. Værktøjet prøver lyden af med det samme og viser varigheden.</div>
+        <div class="status" id="audioUrlStatus"></div>
+      </div>
+      <div class="field">
+        <label for="audioFile">Læg lyden ind i kortet (valgfri)</label>
+        <div class="filebox">
+          <input type="file" id="audioFile" accept="audio/*,.mp3,.m4a">
+          <div class="status" id="audioFileStatus">Ingen lydfil valgt — kortet bruger adressen ovenfor</div>
+          <div class="btnrow"><button type="button" class="sbtn" id="btnAudioClear" disabled>Fjern lydfilen fra kortet</button></div>
+        </div>
+        <div class="hint">Vælger du en lydfil fra computeren, ligger lyden inde i selve kortet og kan afspilles, selv om adressen forsvinder en dag. En time tale fylder typisk 30-60 MB, så kortet bliver stort. Adressen ovenfor gemmes stadig som henvisning.</div>
+      </div>
+    </div>
+
+    <div class="sectionhead">Kortets hoved</div>
+
+    <div class="field">
+      <label for="fKicker">Mærkat (valgfri)</label>
+      <input type="text" id="fKicker" placeholder="fx Syd for Banen · Podcast">
+      <div class="hint">Den lille linje over titlen.</div>
+    </div>
+
+    <div class="field">
+      <label for="fTitle">Titel</label>
+      <input type="text" id="fTitle" placeholder="fx Historien om Gustav Wied-figuren Tummelumsen">
+    </div>
+
+    <div class="field">
+      <label for="fLocation">Sted (valgfri)</label>
+      <input type="text" id="fLocation" placeholder="fx Roskilde, Danmark">
+      <div class="hint">Udfylder automatisk <code>dc.coverage</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="fShare">Webadresse til delingsbillede (valgfri)</label>
+      <input type="text" id="fShare" placeholder="https://…/billede.jpg">
+      <div class="btnrow" id="shareYtRow"><button type="button" class="sbtn" id="btnShareYt" disabled>Brug YouTubes billede</button></div>
+      <div class="hint">Billedet inde i filen kan ikke læses af fx Facebook. Skal kortet deles, så skriv adressen på et billede, der ligger på nettet.</div>
+    </div>
+
+    <div class="field">
+      <label>Plakatbillede</label>
+      <div class="filebox">
+        <input type="file" id="posterInput" accept="image/*">
+        <div class="btnrow">
+          <button type="button" class="sbtn" id="btnThumb" disabled>Hent billedet fra YouTube</button>
+          <button type="button" class="sbtn" id="btnPosterClear" disabled>Fjern billedet</button>
+        </div>
+        <div class="status" id="posterStatus">Intet billede valgt — kortet tegner en enkel plakat med titlen</div>
+        <div class="posterrow" id="posterRow" hidden>
+          <img id="posterThumb" alt="">
+          <div class="meta" id="posterMeta"></div>
+        </div>
+      </div>
+      <div class="hint">Vises øverst på kortet og virker også uden internet. Billedet beskæres til bredformat (16:9) og skaleres til højst 1600 px.</div>
+    </div>
+
+    <div class="field">
+      <label for="fPosterAlt">Alt-tekst til plakatbilledet</label>
+      <input type="text" id="fPosterAlt" placeholder="Til skærmlæsere. Er feltet tomt, bruges titlen.">
+    </div>
+
+    <div class="sectionhead">Om udsendelsen</div>
+
+    <div class="field">
+      <label for="fText">Beskrivelse</label>
+      <textarea id="fText" placeholder="Fortæl kort, hvad udsendelsen handler om …"></textarea>
+      <div class="hint">Du kan skrive: <code>**fed**</code>, <code>*kursiv*</code>, <code>## Overskrift</code>, <code>### Mindre overskrift</code>, <code>- punkt</code>, <code>1. punkt</code>, <code>&gt; citat</code>, <code>[tekst](https://…)</code>, <code>---</code> for en streg og <code>`kode`</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="fNote">Bemærkning (valgfri)</label>
+      <input type="text" id="fNote" placeholder="fx Beskrivelsen er foreløbig.">
+      <div class="hint">Vises i en lille grå boks under beskrivelsen.</div>
+    </div>
+
+    <div class="field">
+      <label for="fChapters">Spring til (tidsstempler)</label>
+      <textarea id="fChapters" class="mono small" placeholder="00:00 Indledning&#10;01:30 Gustav Wied i Roskilde&#10;06:00 Livsens Ondskab og Tummelumsen"></textarea>
+      <div class="hint">Én linje pr. tidsstempel: først tiden, så teksten. Både <code>1:30</code>, <code>01:30</code> og <code>1:02:15</code> virker. Kapitler fra beskrivelsen på YouTube kan kopieres direkte herind.</div>
+      <ul class="chapcheck" id="chapCheck"></ul>
+    </div>
+
+    <div class="sectionhead">Læs mere — udskrift (valgfri)</div>
+
+    <div class="field">
+      <label for="fTransTitle">Overskrift på udfoldningen</label>
+      <input type="text" id="fTransTitle" placeholder="Læs mere – udskrift af hele udsendelsen">
+    </div>
+
+    <div class="field">
+      <label for="fTranscript">Udskrift</label>
+      <div class="filebox" style="margin-bottom:10px">
+        <input type="file" id="transFile" accept=".md,.txt,.srt,.vtt,text/plain,text/markdown">
+        <div class="status" id="transStatus">Du kan indlæse en fil fra MacWhisper (.md, .txt, .srt eller .vtt) eller skrive/indsætte teksten nedenfor</div>
+      </div>
+      <textarea id="fTranscript" style="min-height:260px" placeholder="[00:00:00] Velkommen til endnu en udsendelse …&#10;&#10;[00:02:15] Vi står her på hjørnet af …"></textarea>
+      <div class="hint">Vises på kortet som en sektion, der foldes ud, når man trykker på den. Starter et afsnit med et tidsstempel i firkantede parenteser, fx <code>[00:12:34]</code>, bliver det til en knap, der springer til stedet i optagelsen. Undertekstfiler (.srt og .vtt) samles automatisk til afsnit med tidsstempler. Markdown virker som i beskrivelsen.</div>
+      <div class="status" id="transCount"></div>
+    </div>
+
+    <!-- 4. Knapper -->
+    <div class="sectionhead">Knapper i bunden (maks 3)</div>
+    <div class="field"><div class="row2"><div><input type="text" id="cta1text" placeholder="Knaptekst — fx Flere podcasts" aria-label="Knaptekst 1"></div><div><input type="text" id="cta1url" placeholder="https://..." aria-label="Webadresse 1"></div></div></div>
+    <div class="field"><div class="row2"><div><input type="text" id="cta2text" placeholder="Knaptekst" aria-label="Knaptekst 2"></div><div><input type="text" id="cta2url" placeholder="https://..." aria-label="Webadresse 2"></div></div></div>
+    <div class="field"><div class="row2"><div><input type="text" id="cta3text" placeholder="Knaptekst" aria-label="Knaptekst 3"></div><div><input type="text" id="cta3url" placeholder="https://..." aria-label="Webadresse 3"></div></div></div>
+    <div class="hint" style="margin:-8px 0 22px; font-size:13.5px; color:var(--hint); line-height:1.55">Brug hele webadresser med <code>https://</code> foran. En knap vises kun, når både tekst og adresse er udfyldt. Ved video kommer knappen <strong>Se på YouTube</strong> altid med af sig selv.</div>
+
+    <!-- 5. Hjem -->
+    <div class="sectionhead">Hjem-knap øverst</div>
+    <div class="field">
+      <label for="homeMode">Hjem-knap (valgfri)</label>
+      <select id="homeMode">
+        <option value="auto" selected>Automatisk — vises kun når filen er del af en app eller samling</option>
+        <option value="always">Altid vist</option>
+        <option value="never">Aldrig vist</option>
+      </select>
+      <div class="row2" style="margin-top:10px">
+        <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem" aria-label="Knaptekst til hjem-knappen"></div>
+        <div><input type="text" id="homeUrl" placeholder="index.html" aria-label="Adresse til hjem-knappen"></div>
+      </div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+    </div>
+
+    <!-- 6. Nederst -->
+    <div class="field">
+      <span class="flabel">Nederst på det færdige kort</span>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="visGem" checked>
+          <span>Vis knappen <strong>Gem filen</strong></span></label>
+        <label class="check"><input type="checkbox" id="visOmFil" checked>
+          <span>Vis den foldede liste <strong>Om denne fil</strong></span></label>
+      </div>
+      <div class="hint">Slår du dem fra, forsvinder de kun fra den synlige side. Dublin Core-oplysningerne følger stadig med som skjulte meta-felter i toppen af filen.</div>
+    </div>
+
+    <!-- 7. Dublin Core -->
+    <details class="dc" id="dcDetails">
+      <summary>Dublin Core-metadata</summary>
+      <p class="panel-sub">De 15 felter følger med ind i den færdige fil — både som skjulte oplysninger i toppen og som en foldet liste nederst på kortet. Søgeside · Bygger læser dem herfra.</p>
+      <div class="field-grid">
+        <div class="field"><label for="dcTitle">Titel <span class="hint">dc.title — udfyldes automatisk fra titlen</span></label><input type="text" id="dcTitle"></div>
+        <div class="field"><label for="dcCreator">Ophav / skaber <span class="hint">dc.creator — den der har lavet udsendelsen, fx Roskilde TV</span></label><input type="text" id="dcCreator"></div>
+        <div class="field"><label for="dcSubject">Emne / nøgleord <span class="hint">dc.subject — adskil med semikolon</span></label><input type="text" id="dcSubject" placeholder="Roskilde; Gustav Wied; litteratur"></div>
+        <div class="field"><label for="dcDescription">Beskrivelse <span class="hint">dc.description — udfyldes automatisk fra beskrivelsen</span></label><input type="text" id="dcDescription"></div>
+        <div class="field"><label for="dcPublisher">Udgiver / område <span class="hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset</span></label>
+          <select id="dcPublisher"><option value="">(ikke valgt)</option></select></div>
+        <div class="field"><label for="dcContributor">Bidragyder <span class="hint">dc.contributor — den der har lavet kortet, udskriften og metadata</span></label><input type="text" id="dcContributor"></div>
+        <div class="field"><label for="dcDate">Dato <span class="hint">dc.date — udsendelsens dato, helst ÅÅÅÅ-MM-DD</span></label><input type="text" id="dcDate" placeholder="2026-09-27"></div>
+        <div class="field"><label for="dcType">Type <span class="hint">dc.type — DCMI-typeordforråd, følger valget af video eller lyd</span></label>
+          <select id="dcType">
+            <option value="Text">Text</option>
+            <option value="Image">Image</option>
+            <option value="Sound">Sound</option>
+            <option value="MovingImage" selected>MovingImage</option>
+            <option value="InteractiveResource">InteractiveResource</option>
+            <option value="Collection">Collection</option>
+            <option value="Event">Event</option>
+          </select></div>
+        <div class="field"><label for="dcFormat">Format <span class="hint">dc.format — filens tekniske format</span></label><input type="text" id="dcFormat" value="text/html"></div>
+        <div class="field"><label for="dcIdentifier">Identifikator <span class="hint">dc.identifier — foreslås automatisk ud fra område og titel</span></label><input type="text" id="dcIdentifier" placeholder="fx SFB-podcast-skomagervaerkstedet-2026"></div>
+        <div class="field"><label for="dcSource">Kilde <span class="hint">dc.source — udfyldes automatisk med adressen på videoen eller lydfilen</span></label><input type="text" id="dcSource"></div>
+        <div class="field"><label for="dcLanguage">Sprog <span class="hint">dc.language — sprogkode, fx da</span></label><input type="text" id="dcLanguage" value="da"></div>
+        <div class="field"><label for="dcRelation">Relation <span class="hint">dc.relation — beslægtet materiale, fx en artikelside eller et album</span></label><input type="text" id="dcRelation"></div>
+        <div class="field"><label for="dcCoverage">Dækning <span class="hint">dc.coverage — sted og/eller periode, udfyldes automatisk fra Sted</span></label><input type="text" id="dcCoverage" placeholder="Roskilde, Danmark; 1900-1950"></div>
+        <div class="field"><label for="dcRights">Rettigheder <span class="hint">dc.rights — ophavsret og vilkår for brug</span></label><input type="text" id="dcRights" placeholder="fx © Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse."></div>
+      </div>
+      <button class="meta-btn" id="metaJsonBtn" type="button">Gem metadata som separat JSON-fil</button>
+    </details>
+
+    <!-- 8. Generér -->
+    <div class="sizebar" id="sizeBar">Indhold i filen: 0 KB</div>
+    <button class="generate-btn" id="generateBtn" disabled>Generér mediekort (.html)</button>
+    <div class="msg" id="msgBox"></div>
+  </div>
+
+  <div class="preview-pane">
+    <div class="label">Forhåndsvisning</div>
+    <div class="phone-frame">
+      <iframe id="previewFrame" title="Forhåndsvisning af det færdige mediekort"></iframe>
+    </div>
+    <p class="note" id="previewNote">I forhåndsvisningen åbner afspil og tidsstempler videoen på YouTube i et nyt vindue. Lagt på en hjemmeside afspiller kortet videoen direkte på siden.</p>
+  </div>
+</div>
+
+<script>
+/* =======================================================================
+   Mediekort · Bygger — version 1.0
+   Følger Builder-standard 1.2 (september 2026). Reference: Sidebygger 1.4.
+   Outputformat: "mediekort", builderVersion 1.
+   ======================================================================= */
+const BUILDER_VERSION = 1;   // tælles op ved formatændringer
+
+const state = {
+  theme:'original',
+  mode:'video',                // 'video' eller 'audio'
+  videoId:'',
+  audioUrl:'', audioDuration:0,
+  audioBlob:null, audioName:'', audioBlobUrl:'',
+  kicker:'', title:'', location:'', shareImage:'',
+  poster:'', posterAlt:'',
+  text:'', note:'', chaptersRaw:'',
+  transTitle:'', transcript:'',
+  ctas:[{text:'',url:''},{text:'',url:''},{text:'',url:''}],
+  homeMode:'auto', homeLabel:'', homeUrl:'',
+  visGem:true, visOmFil:true,
+  taellerBlock:''
+};
+
+/* ---------- Dublin Core ---------- */
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav', subject:'Emne', description:'Beskrivelse',
+  publisher:'Udgiver', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+const AREA_PREFIX = {};
+PUBLISHERS.forEach(p => { AREA_PREFIX[p.name] = p.prefix; });
+
+(function fillPublisherSelect(){
+  const sel = document.getElementById('dcPublisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+function ensurePublisherOption(v){
+  const sel = document.getElementById('dcPublisher');
+  if (!v || Array.from(sel.options).some(o => o.value === v)) return;
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v + ' (ikke på listen — vælg en udgiver)';
+  sel.appendChild(o);
+}
+
+function dcInputId(key){ return 'dc' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+// Felter der spejler formularen, indtil man selv skriver i dem.
+const dcTouched = { title:false, description:false, coverage:false, identifier:false, source:false, type:false };
+
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+
+// Roskilde TV's logo: seks prikker. Vises i kortet, når temaet er Roskilde TV.
+const RTV_DOTS = ['#4DB0E8', '#3576BA', '#8E2D62', '#B03035', '#E8803A', '#EFAF45'];
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Småting ---------- */
+
+function escapeHtml(str){
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function hexToRgba(hex, a){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+
+// Blander en farve med hvid — bruges til accenttekst i mørk tilstand, så kontrasten holder.
+function lighten(hex, amt){
+  const h = hex.replace('#','');
+  const n = parseInt(h, 16);
+  const mix = c => Math.round(c + (255 - c) * amt);
+  const r = mix((n>>16)&255), g = mix((n>>8)&255), b = mix(n&255);
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+function fmtBytes(b){
+  if (!b) return '0 KB';
+  if (b < 1024*1024) return Math.max(1, Math.round(b/1024)) + ' KB';
+  return (b/(1024*1024)).toFixed(1).replace('.', ',') + ' MB';
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+function stripMdToPlain(md, maxLen){
+  let t = (md || '')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen - 1).trim() + '…';
+  return t;
+}
+
+/* ---------- Markdown (Builder-standard afsnit 6) ---------- */
+
+function inlineMd(s){
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+
+function mdToHtml(md){
+  if (!md) return '';
+  const lines = escapeHtml(md).split('\n');
+  let html = '', inUl = false, inOl = false, para = [];
+  function flushPara(){ if (para.length){ html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } }
+  function closeLists(){
+    if (inUl){ html += '</ul>'; inUl = false; }
+    if (inOl){ html += '</ol>'; inOl = false; }
+  }
+  for (const line of lines){
+    let m;
+    if (/^\s*$/.test(line)){ flushPara(); closeLists(); continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)){ flushPara(); closeLists(); html += '<hr>'; continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))){
+      flushPara(); closeLists();
+      const level = Math.min(Math.max(m[1].length, 2), 5);
+      html += '<h' + level + '>' + inlineMd(m[2]) + '</h' + level + '>';
+      continue;
+    }
+    if ((m = line.match(/^[-*]\s+(.*)$/))){
+      flushPara();
+      if (inOl){ html += '</ol>'; inOl = false; }
+      if (!inUl){ html += '<ul>'; inUl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^\d+\.\s+(.*)$/))){
+      flushPara();
+      if (inUl){ html += '</ul>'; inUl = false; }
+      if (!inOl){ html += '<ol>'; inOl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^&gt;\s?(.*)$/))){
+      flushPara(); closeLists();
+      html += '<blockquote>' + inlineMd(m[1]) + '</blockquote>';
+      continue;
+    }
+    closeLists();
+    para.push(line);
+  }
+  flushPara(); closeLists();
+  return html;
+}
+
+/* ---------- Tider og tidsstempler ---------- */
+
+function fmtTime(t){
+  t = Math.max(0, Math.round(t));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const two = n => (n < 10 ? '0' : '') + n;
+  return h ? h + ':' + two(m) + ':' + two(s) : two(m) + ':' + two(s);
+}
+function fmtTimeLong(t){
+  t = Math.max(0, Math.floor(t));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const two = n => (n < 10 ? '0' : '') + n;
+  return two(h) + ':' + two(m) + ':' + two(s);
+}
+function fmtDuration(sec){
+  sec = Math.round(sec || 0);
+  if (!sec) return '';
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  if (h) return h + ' t ' + m + ' min';
+  return Math.max(1, m) + ' min';
+}
+function timeToSec(str){
+  const parts = String(str).replace(',', '.').split(':');
+  let s = 0;
+  parts.forEach(p => { s = s * 60 + parseFloat(p || '0'); });
+  return s;
+}
+
+function parseChapters(raw){
+  const list = [], bad = [];
+  String(raw || '').split('\n').forEach(line => {
+    const l = line.trim();
+    if (!l) return;
+    const m = l.match(/^[-–•*]?\s*[\[(]?((?:\d{1,2}:)?\d{1,2}:\d{2})[\])]?\s*[-–—:.|]?\s*(.+)$/);
+    if (!m){ bad.push(l); return; }
+    list.push({ t: Math.round(timeToSec(m[1])), label: m[2].trim() });
+  });
+  list.sort((a, b) => a.t - b.t);
+  return { list, bad };
+}
+function chaptersToText(arr){
+  return (arr || []).map(c => fmtTime(c.t) + ' ' + c.label).join('\n');
+}
+
+/* ---------- Udskrift: undertekstfiler samles til afsnit ---------- */
+
+// Tager cues [{t, text}] og samler dem til afsnit på passende længde,
+// hvert med tidsstemplet forrest i firkantede parenteser.
+function cuesToParagraphs(cues){
+  const out = [];
+  let cur = null, lastEnd = 0;
+  cues.forEach(c => {
+    const txt = c.text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!txt) return;
+    const gap = c.t - lastEnd;
+    const breakHere = !cur || (cur.text.length > 350 && /[.!?…]["»”]?$/.test(cur.text)) || cur.text.length > 900 || (gap > 3 && cur.text.length > 120);
+    if (breakHere){
+      if (cur) out.push(cur);
+      cur = { t: c.t, text: txt };
+    } else {
+      cur.text += ' ' + txt;
+    }
+    lastEnd = c.end || c.t;
+  });
+  if (cur) out.push(cur);
+  return out.map(p => '[' + fmtTimeLong(p.t) + '] ' + p.text).join('\n\n');
+}
+
+function subsToText(raw){
+  const text = raw.replace(/^\uFEFF/, '').replace(/\r/g, '');
+  const cues = [];
+  // Whisper-stil: [00:00:00.000 --> 00:00:05.000] tekst
+  const whisper = /^\[(\d{1,2}:\d{2}:\d{2}[.,]\d+|\d{1,2}:\d{2}[.,]\d+)\s*-->\s*([^\]]+)\]\s*(.*)$/;
+  const lines = text.split('\n');
+  if (lines.some(l => whisper.test(l.trim()))){
+    lines.forEach(l => {
+      const m = l.trim().match(whisper);
+      if (m) cues.push({ t: timeToSec(m[1]), end: timeToSec(m[2]), text: m[3] });
+    });
+    return cuesToParagraphs(cues);
+  }
+  // SRT / VTT: blokke adskilt af tomme linjer, med en linje med -->
+  text.split(/\n\s*\n/).forEach(block => {
+    const bl = block.split('\n').map(s => s.trim()).filter(Boolean);
+    const i = bl.findIndex(s => s.indexOf('-->') !== -1);
+    if (i === -1) return;
+    const tm = bl[i].match(/((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d+)\s*-->\s*((?:\d{1,2}:)?\d{1,2}:\d{2}[.,]\d+)/);
+    if (!tm) return;
+    cues.push({ t: timeToSec(tm[1]), end: timeToSec(tm[2]), text: bl.slice(i + 1).join(' ') });
+  });
+  return cuesToParagraphs(cues);
+}
+
+function looksLikeSubs(name, raw){
+  if (/\.(srt|vtt)$/i.test(name)) return true;
+  return /^\s*\[\d{1,2}:\d{2}(:\d{2})?[.,]\d+\s*-->/m.test(raw);
+}
+
+// Udskriften som HTML: tidsstempler forrest i et afsnit bliver til knapper.
+function transcriptHtml(md){
+  return mdToHtml(md).replace(/(<p>|<br>|<li>)\[((?:\d{1,2}:)?\d{1,2}:\d{2})(?:[.,]\d+)?\]\s*/g, (all, pre, ts) => {
+    const sec = Math.round(timeToSec(ts));
+    return pre + '<button type="button" class="ts" data-t="' + sec + '" aria-label="Spring til ' + fmtTime(sec) + '">' + fmtTime(sec) + '</button> ';
+  });
+}
+
+function wordCount(s){
+  const m = (s || '').replace(/\[[\d:.,]+\]/g, ' ').match(/[A-Za-zÆØÅæøåÀ-ÿ0-9]+/g);
+  return m ? m.length : 0;
+}
+
+/* ---------- YouTube ---------- */
+
+function parseYouTube(raw){
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  return m ? m[1] : '';
+}
+function watchUrl(id){ return 'https://www.youtube.com/watch?v=' + id; }
+
+/* ---------- Lydadresse ---------- */
+
+// Finder den direkte lydadresse. En Buzzsprout-episodeadresse får .mp3 sat på,
+// som i Buzzsprouts eget RSS-feed.
+function resolveAudioUrl(raw){
+  let s = String(raw || '').trim();
+  if (!s) return { url:'', note:'' };
+  if (/\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)(\?|#|$)/i.test(s)) return { url:s, note:'' };
+  if (/buzzsprout\.com\/\d+\/(episodes\/)?\d+/i.test(s)){
+    s = s.replace(/[?#].*$/, '').replace(/\/+$/, '');
+    return { url: s + '.mp3', note:'Buzzsprout-episode — mp3-adressen er fundet ud fra den.' };
+  }
+  return { url:s, note:'Adressen ender ikke på .mp3.' };
+}
+
+let audioTestToken = 0;
+function testAudioUrl(){
+  const st = $('audioUrlStatus');
+  const r = resolveAudioUrl($('fAudioUrl').value);
+  state.audioUrl = r.url;
+  const token = ++audioTestToken;
+  if (!r.url){ st.textContent = ''; st.className = 'status'; state.audioDuration = 0; schedulePreview(); return; }
+  st.textContent = (r.note ? r.note + ' ' : '') + 'Prøver lyden af …';
+  st.className = 'status pending';
+  const a = new Audio();
+  a.preload = 'metadata';
+  a.onloadedmetadata = () => {
+    if (token !== audioTestToken) return;
+    state.audioDuration = isFinite(a.duration) ? a.duration : 0;
+    st.textContent = (r.note ? r.note + ' ' : '') + 'Lyden virker' + (state.audioDuration ? ' — varighed ' + fmtDuration(state.audioDuration) : '') + '.';
+    st.className = 'status';
+    a.src = '';
+    renderPreview();
+  };
+  a.onerror = () => {
+    if (token !== audioTestToken) return;
+    st.innerHTML = (r.note ? escapeHtml(r.note) + ' ' : '') + 'Lyden kunne ikke hentes fra <a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">' + escapeHtml(r.url) + '</a>. Tjek adressen, eller brug den direkte mp3-adresse.';
+    st.className = 'status bad';
+  };
+  a.src = r.url;
+  schedulePreview();
+}
+
+/* ---------- Plakatbillede: 16:9, højst 1600 px, JPEG 0,82 ---------- */
+
+function makePoster(img){
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const ratio = 16 / 9;
+  let sx = 0, sy = 0, sw = w, sh = h;
+  if (w / h > ratio){ sw = Math.round(h * ratio); sx = Math.round((w - sw) / 2); }
+  else { sh = Math.round(w / ratio); sy = Math.round((h - sh) / 2); }
+  const outW = Math.min(1600, sw), outH = Math.round(outW / ratio);
+  const c = document.createElement('canvas');
+  c.width = outW; c.height = outH;
+  const k = c.getContext('2d');
+  k.imageSmoothingQuality = 'high';
+  k.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+  return { url: c.toDataURL('image/jpeg', 0.82), w: outW, h: outH };
+}
+
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Billedet kunne ikke vises'));
+    img.src = src;
+  });
+}
+
+function setPoster(url, info){
+  state.poster = url || '';
+  if (state.poster){
+    $('posterThumb').src = state.poster;
+    $('posterMeta').innerHTML = info + '<br>~' + fmtBytes(state.poster.length * 0.75) + ' i filen';
+    $('posterRow').hidden = false;
+  } else {
+    $('posterRow').hidden = true;
+    $('posterStatus').textContent = 'Intet billede valgt — kortet tegner en enkel plakat med titlen';
+    $('posterStatus').className = 'status';
+  }
+  $('btnPosterClear').disabled = !state.poster;
+  renderPreview();
+}
+
+$('posterInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const st = $('posterStatus');
+  st.textContent = 'Skalerer billede …'; st.className = 'status pending';
+  try {
+    const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    const p = makePoster(await loadImage(url));
+    setPoster(p.url, '<b>' + escapeHtml(file.name) + '</b><br>' + p.w + ' × ' + p.h + ' pixel');
+    st.textContent = 'Billede klar'; st.className = 'status';
+  } catch(err){
+    st.textContent = 'Filen er ikke et billede, der kan vises.'; st.className = 'status bad';
+  }
+  e.target.value = '';
+});
+
+$('btnPosterClear').addEventListener('click', () => setPoster('', ''));
+
+$('btnThumb').addEventListener('click', () => {
+  const id = state.videoId, st = $('posterStatus');
+  if (!id) return;
+  st.textContent = 'Henter billedet fra YouTube …'; st.className = 'status pending';
+  const names = ['maxresdefault', 'sddefault', 'hqdefault'];
+  let i = 0;
+  (function next(){
+    if (i >= names.length){
+      const link = 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg';
+      st.innerHTML = 'YouTube ville ikke udlevere billedet direkte. Åbn <a href="' + link + '" target="_blank" rel="noopener">billedet her</a>, gem det på computeren, og vælg det så i feltet ovenfor.';
+      st.className = 'status bad';
+      return;
+    }
+    const name = names[i++];
+    fetch('https://i.ytimg.com/vi/' + id + '/' + name + '.jpg', { mode:'cors' })
+      .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
+      .then(blob => {
+        const u = URL.createObjectURL(blob);
+        return loadImage(u).then(img => {
+          URL.revokeObjectURL(u);
+          if (img.naturalWidth < 200) throw new Error();
+          const p = makePoster(img);
+          setPoster(p.url, '<b>Fra YouTube</b> (' + name + ')<br>' + p.w + ' × ' + p.h + ' pixel');
+          st.textContent = 'Billedet er hentet'; st.className = 'status';
+        });
+      })
+      .catch(next);
+  })();
+});
+
+$('btnShareYt').addEventListener('click', () => {
+  if (!state.videoId) return;
+  $('fShare').value = 'https://i.ytimg.com/vi/' + state.videoId + '/hqdefault.jpg';
+  renderPreview();
+});
+
+$('btnOembed').addEventListener('click', () => {
+  const id = state.videoId, st = $('urlStatus');
+  if (!id) return;
+  st.textContent = 'Henter oplysninger fra YouTube …'; st.className = 'status pending';
+  fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(watchUrl(id)))
+    .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+    .then(d => {
+      const got = [];
+      if (d.title && !$('fTitle').value.trim()){ $('fTitle').value = d.title; got.push('titel'); }
+      if (d.author_name && !$('dcCreator').value.trim()){ $('dcCreator').value = d.author_name; got.push('kanal som ophav'); }
+      st.textContent = got.length
+        ? 'Hentet: ' + got.join(' og ') + '. Ret gerne til.'
+        : 'YouTube kalder den «' + (d.title || '') + '» fra kanalen ' + (d.author_name || '') + '. Dine egne felter er ikke ændret.';
+      st.className = 'status';
+      renderPreview();
+    })
+    .catch(() => {
+      st.textContent = 'Oplysningerne kunne ikke hentes. Skriv titlen selv — resten virker som det skal.';
+      st.className = 'status bad';
+    });
+});
+
+/* ---------- Lydfil lagt ind i kortet ---------- */
+
+function setAudioBlob(blob, name){
+  if (state.audioBlobUrl){ URL.revokeObjectURL(state.audioBlobUrl); }
+  state.audioBlob = blob || null;
+  state.audioName = name || '';
+  state.audioBlobUrl = blob ? URL.createObjectURL(blob) : '';
+  $('btnAudioClear').disabled = !blob;
+  const st = $('audioFileStatus');
+  if (blob){
+    st.textContent = 'Lyden ligger i kortet: ' + (name || 'lydfil') + ' (' + fmtBytes(blob.size) + ', ca. ' + fmtBytes(blob.size * 4 / 3) + ' i filen)';
+    st.className = 'status';
+    const a = new Audio();
+    a.preload = 'metadata';
+    a.onloadedmetadata = () => { if (isFinite(a.duration)){ state.audioDuration = a.duration; renderPreview(); } };
+    a.src = state.audioBlobUrl;
+  } else {
+    st.textContent = 'Ingen lydfil valgt — kortet bruger adressen ovenfor';
+    st.className = 'status';
+  }
+  renderPreview();
+}
+
+$('audioFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) setAudioBlob(file, file.name);
+  e.target.value = '';
+});
+$('btnAudioClear').addEventListener('click', () => setAudioBlob(null, ''));
+
+function blobToDataUrl(blob){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('Lydfilen kunne ikke læses'));
+    r.readAsDataURL(blob);
+  });
+}
+
+/* ---------- Udskrift fra fil ---------- */
+
+$('transFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const st = $('transStatus');
+  try {
+    const raw = (await file.text()).replace(/^\uFEFF/, '');
+    const out = looksLikeSubs(file.name, raw) ? subsToText(raw) : raw.replace(/\r/g, '');
+    if ($('fTranscript').value.trim() && !confirm('Der står allerede tekst i udskriftsfeltet. Skal den erstattes af indholdet fra ' + file.name + '?')){
+      e.target.value = ''; return;
+    }
+    $('fTranscript').value = out;
+    st.textContent = 'Indlæst: ' + file.name + (looksLikeSubs(file.name, raw) ? ' — undertekster er samlet til afsnit med tidsstempler' : '');
+    st.className = 'status';
+    renderPreview();
+  } catch(err){
+    st.textContent = 'Filen kunne ikke læses: ' + err.message;
+    st.className = 'status bad';
+  }
+  e.target.value = '';
+});
+
+/* =======================================================================
+   Dublin Core
+   ======================================================================= */
+
+function collectDublinCore(){
+  const dc = {};
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    const val = el ? el.value.trim() : '';
+    if (val) dc[key] = val;
+  });
+  // Udgiveren står som første emneord (Builder-standard 4.1).
+  if (dc.publisher){
+    const parts = (dc.subject || '').split(';').map(s => s.trim()).filter(Boolean).map(t => {
+      const n = normalizePublisher(t);
+      return AREA_PREFIX[n] ? n : t;
+    });
+    const rest = parts.filter(p => p !== dc.publisher);
+    dc.subject = [dc.publisher].concat(rest).join('; ');
+  }
+  return dc;
+}
+
+function syncAutoDc(){
+  if (!dcTouched.title) $('dcTitle').value = state.title.trim();
+  if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.text, 300);
+  if (!dcTouched.coverage) $('dcCoverage').value = state.location.trim();
+  if (!dcTouched.type) $('dcType').value = state.mode === 'audio' ? 'Sound' : 'MovingImage';
+  if (!dcTouched.source){
+    $('dcSource').value = state.mode === 'audio' ? state.audioUrl : (state.videoId ? watchUrl(state.videoId) : '');
+  }
+  if (!dcTouched.identifier){
+    const prefix = AREA_PREFIX[$('dcPublisher').value];
+    const name = slugify(state.title, '');
+    const word = state.mode === 'audio' ? 'podcast' : 'video';
+    $('dcIdentifier').value = (prefix && name) ? (prefix + '-' + word + '-' + name + '-' + new Date().getFullYear()) : '';
+  }
+}
+
+function buildDcMetaTags(dc){
+  const lines = [];
+  DC_FIELDS.forEach(key => {
+    if (!dc[key]) return;
+    if (key === 'subject'){
+      dc[key].split(';').forEach(part => {
+        const v = part.trim();
+        if (v) lines.push('<meta name="DC.subject" content="' + escapeHtml(v) + '">');
+      });
+    } else {
+      lines.push('<meta name="DC.' + key + '" content="' + escapeHtml(dc[key]) + '">');
+    }
+  });
+  if (!lines.length) return '';
+  return '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">\n' + lines.join('\n');
+}
+
+function buildDcSection(dc){
+  const rows = DC_FIELDS.filter(key => dc[key])
+    .map(key => '<div class="meta-row"><dt>' + DC_LABELS[key] + ' <span class="dc-tag">dc.' + key + '</span></dt><dd>' + escapeHtml(dc[key]) + '</dd></div>');
+  if (!rows.length) return '';
+  return '<details class="meta" id="omfilen">'
+    + '<summary><span>Om denne fil</span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+    + '<dl class="meta-list">' + rows.join('') + '</dl>'
+    + '</details>';
+}
+
+/* =======================================================================
+   Den færdige fil
+   ======================================================================= */
+
+function wrapTitle(title, max){
+  const words = String(title).split(/\s+/), lines = [];
+  let cur = '';
+  words.forEach(w => {
+    if ((cur + ' ' + w).trim().length > max && cur){ lines.push(cur); cur = w; }
+    else cur = (cur + ' ' + w).trim();
+  });
+  if (cur) lines.push(cur);
+  if (lines.length > 3){ lines.length = 3; lines[2] = lines[2].replace(/\s*\S*$/, '') + ' …'; }
+  return lines;
+}
+
+// Tegnet plakat, når der ikke er valgt et billede.
+function drawnPoster(s, t){
+  const lines = wrapTitle(s.title || 'Mediekort', 24);
+  const size = lines.length > 2 ? 64 : 88;
+  const startY = lines.length > 1 ? 200 : 240;
+  const rtv = s.theme === 'roskildetv';
+  const bg = rtv ? '#141414' : t.accentDark;
+  const fg = rtv ? '#FFFFFF' : t.onAccent;
+  const txt = lines.map((l, i) => '<text x="800" y="' + Math.round(startY + i * size * 1.12) + '" font-size="' + size + '">' + escapeHtml(l) + '</text>').join('');
+  let deco;
+  if (s.mode === 'audio'){
+    // Lydbølge nederst
+    const bars = [];
+    for (let i = 0; i < 48; i++){
+      const hgt = 20 + Math.round(Math.abs(Math.sin(i * 0.55) * Math.cos(i * 0.21)) * 150);
+      bars.push('<rect x="' + (212 + i * 24) + '" y="' + (760 - hgt) + '" width="12" rx="6" height="' + hgt + '"/>');
+    }
+    deco = '<g fill="' + fg + '" opacity=".22">' + bars.join('') + '</g>';
+  } else if (rtv){
+    const pos = [[150,815,26],[300,745,36],[480,700,46],[690,680,56],[930,695,68],[1250,735,108]];
+    deco = RTV_DOTS.map((c, i) => '<circle cx="' + pos[i][0] + '" cy="' + pos[i][1] + '" r="' + pos[i][2] + '" fill="' + c + '"/>').join('');
+  } else {
+    deco = '<path fill="' + fg + '" opacity=".10" d="M0 900V610h120v-60h70v60h90V520l60-50 60 50v90h110V560h80v50h120V470l40-90 40 90v140h100V540h90v70h140V500l70-60 70 60v110h130V570h90v40h150v290z"/>';
+  }
+  return '<svg class="drawn" viewBox="0 0 1600 900" aria-hidden="true" preserveAspectRatio="xMidYMid slice">'
+    + '<rect width="1600" height="900" fill="' + bg + '"/>' + deco
+    + '<g fill="' + fg + '" font-family="Georgia,serif" text-anchor="middle">'
+    + (s.kicker ? '<text x="800" y="' + Math.round(startY - size - 10) + '" font-size="40" opacity=".8">' + escapeHtml(s.kicker) + '</text>' : '')
+    + txt + '</g></svg>';
+}
+
+const ICON_PLAY = '<svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>';
+const ICON_PAUSE = '<svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1"/></svg>';
+
+/* Dette script lægges ind i den færdige fil. Det skrives som en almindelig
+   funktion her og kopieres ud med .toString(), så det er let at læse begge steder. */
+function mediekortRuntime(C){
+  var root = document.documentElement, body = document.body;
+  // Den rene kopi til "Gem filen" tages, før noget på siden er ændret.
+  var original = "<!DOCTYPE html>\n" + root.outerHTML;
+  function byId(id){ return document.getElementById(id); }
+
+  /* --- Læsehjælp --- */
+  var fs = 1;
+  function setFs(v){ fs = Math.min(1.7, Math.max(0.85, Math.round(v * 10) / 10)); root.style.setProperty("--fs", fs.toFixed(2)); }
+  byId("fontInc").addEventListener("click", function(){ setFs(fs + 0.1); });
+  byId("fontDec").addEventListener("click", function(){ setFs(fs - 0.1); });
+  byId("darkBtn").addEventListener("click", function(){
+    var on = body.classList.toggle("dark");
+    byId("iconMoon").style.display = on ? "none" : "block";
+    byId("iconSun").style.display = on ? "block" : "none";
+  });
+  var toTop = byId("toTop");
+  window.addEventListener("scroll", function(){ toTop.classList.toggle("show", window.scrollY > 400); });
+  toTop.addEventListener("click", function(){ window.scrollTo({ top:0, behavior:"smooth" }); });
+
+  /* --- Afspilleren --- */
+  var player = byId("player"), playBtn = byId("playBtn"), audio = byId("lyd"), ytLink = byId("ytLink");
+  var canEmbed = /^https?:$/.test(location.protocol);
+  if (C.mode === "video" && !canEmbed) body.classList.add("is-local");
+  function net(){ body.classList.toggle("is-offline", !navigator.onLine); }
+  window.addEventListener("online", net); window.addEventListener("offline", net); net();
+
+  var frame = null;
+  function watchAt(t){ return "https://www.youtube.com/watch?v=" + C.id + (t ? "&t=" + t + "s" : ""); }
+  function playVideo(t){
+    if (!C.id) return;
+    t = t || 0;
+    if (ytLink) ytLink.href = watchAt(t);
+    if (!canEmbed){ window.open(watchAt(t), "_blank", "noopener"); return; }
+    if (!navigator.onLine) return;
+    if (frame){
+      // Afspilleren kører allerede: spring uden at genindlæse.
+      frame.contentWindow.postMessage(JSON.stringify({ event:"command", func:"seekTo", args:[t, true] }), "*");
+      frame.contentWindow.postMessage(JSON.stringify({ event:"command", func:"playVideo", args:[] }), "*");
+      return;
+    }
+    frame = document.createElement("iframe");
+    frame.src = "https://www.youtube-nocookie.com/embed/" + C.id + "?rel=0&autoplay=1&enablejsapi=1&start=" + t;
+    frame.title = C.title;
+    frame.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture; fullscreen");
+    frame.setAttribute("allowfullscreen", "");
+    frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    player.innerHTML = "";
+    player.appendChild(frame);
+  }
+  function playAudioAt(t){
+    if (!audio) return;
+    function go(){
+      try { audio.currentTime = t; } catch(e){}
+      var p = audio.play(); if (p && p.catch) p.catch(function(){});
+    }
+    if (audio.readyState >= 1) go();
+    else {
+      audio.addEventListener("loadedmetadata", go, { once:true });
+      audio.preload = "metadata";
+      audio.load();
+    }
+  }
+  function seek(t){
+    if (C.mode === "audio") playAudioAt(t);
+    else {
+      playVideo(t);
+      if (canEmbed && navigator.onLine) player.scrollIntoView({ behavior:"smooth", block:"center" });
+    }
+  }
+
+  if (playBtn){
+    playBtn.addEventListener("click", function(){
+      if (C.mode === "audio"){
+        if (!audio) return;
+        if (audio.paused){ var p = audio.play(); if (p && p.catch) p.catch(function(){}); }
+        else audio.pause();
+      } else playVideo(0);
+    });
+  }
+  if (audio){
+    function mark(){
+      var playing = !audio.paused;
+      player.classList.toggle("playing", playing);
+      if (playBtn) playBtn.setAttribute("aria-label", playing ? "Sæt på pause" : "Afspil udsendelsen");
+    }
+    audio.addEventListener("play", mark); audio.addEventListener("pause", mark); audio.addEventListener("ended", mark);
+    // Det kapitel, man er i, fremhæves.
+    var chapBtns = Array.prototype.slice.call(document.querySelectorAll("ol.chapters button[data-t]"));
+    audio.addEventListener("timeupdate", function(){
+      var now = audio.currentTime, cur = null;
+      chapBtns.forEach(function(b){ if (parseInt(b.getAttribute("data-t"), 10) <= now + 0.5) cur = b; });
+      chapBtns.forEach(function(b){
+        if (b === cur) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+      });
+    });
+    audio.addEventListener("error", function(){ body.classList.add("audio-error"); });
+  }
+
+  document.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest("button[data-t]") : null;
+    if (!b) return;
+    seek(parseInt(b.getAttribute("data-t"), 10) || 0);
+  });
+
+  /* --- Udskrift: foldes ud ved udskrivning --- */
+  window.addEventListener("beforeprint", function(){
+    Array.prototype.forEach.call(document.querySelectorAll("details.udskrift"), function(d){ d.setAttribute("open", ""); });
+  });
+
+  /* --- Gem filen: en ren kopi, som den var, da den blev åbnet --- */
+  var dlBtn = byId("dlBtn");
+  if (dlBtn) dlBtn.addEventListener("click", function(){
+    try {
+      var blob = new Blob([original], { type:"text/html;charset=utf-8" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = C.filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    } catch(e){ alert("Filen kunne ikke gemmes her i browseren."); }
+  });
+
+  /* --- Hjem-knappen: i "automatisk" vises den kun, hvis filen er del af noget større --- */
+  var bar = byId("topbar");
+  if (bar){
+    var link = byId("homeBtn");
+    var target = C.homeUrl;
+    function show(){ bar.classList.add("show"); }
+    var fromUrl = null;
+    try { var q = new URLSearchParams(location.search); fromUrl = q.get("hjem") || q.get("home"); } catch(e){}
+    if (fromUrl) target = fromUrl;
+    link.setAttribute("href", target);
+    if (C.homeMode === "always" || fromUrl){ show(); }
+    else if (C.homeMode === "auto"){
+      var path = (location.pathname || "").toLowerCase();
+      var isIndex = path.charAt(path.length - 1) === "/" || path.indexOf("/index.html") === path.length - 11;
+      if (!isIndex){
+        var shown = false;
+        try {
+          if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); shown = true; }
+        } catch(e){}
+        if (!shown && navigator.standalone === true){ show(); shown = true; }
+        if (!shown){
+          try {
+            if (document.referrer){
+              var ref = new URL(document.referrer), here = new URL(location.href);
+              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));
+              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));
+              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }
+            }
+          } catch(e){}
+        }
+        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){
+          try { fetch(target, { method:"HEAD" }).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}
+        }
+      }
+    }
+  }
+}
+
+function buildPageHTML(s, opts){
+  const isPreview = !!opts.preview;
+  const audioSrc = opts.audioSrc || '';
+  const t = THEMES[s.theme] || THEMES.original;
+  const dc = collectDublinCore();
+  const dcMeta = buildDcMetaTags(dc);
+  const dcBlock = (s.visOmFil === false) ? '' : buildDcSection(dc);
+  const pageLang = (dc.language || 'da').trim() || 'da';
+  const pageTitle = s.title || 'Mediekort';
+  const fileName = slugify(s.title, 'mediekort') + '.html';
+  const isAudio = s.mode === 'audio';
+  const id = s.videoId;
+  const watch = id ? watchUrl(id) : '';
+  const chapters = parseChapters(s.chaptersRaw).list;
+  const textHtml = mdToHtml(s.text);
+  const hasTranscript = !!s.transcript.trim();
+  const transTitle = s.transTitle.trim() || 'Læs mere – udskrift af hele udsendelsen';
+  const embedded = isAudio && !!s.audioBlob;
+
+  const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
+  const homeLabel = s.homeLabel.trim() || 'Hjem';
+  const homeUrl = s.homeUrl.trim() || 'index.html';
+  const homeVisible = homeMode === 'always' || (isPreview && homeMode !== 'never');
+  const homeBlock = homeMode === 'never' ? '' :
+    '<div class="homewrap' + (homeVisible ? ' show' : '') + '" id="topbar" data-mode="' + homeMode + '">'
+    + '<a class="home-btn" id="homeBtn" href="' + escapeHtml(homeUrl) + '">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>'
+    + '<span>' + escapeHtml(homeLabel) + '</span></a></div>';
+
+  /* Afspiller */
+  const posterAlt = s.posterAlt.trim() || pageTitle;
+  const posterEl = s.poster
+    ? '<img class="poster" id="poster" src="' + s.poster + '" alt="' + escapeHtml(posterAlt) + '">'
+    : drawnPoster(s, t);
+  const playLabel = isAudio ? 'Afspil udsendelsen' : 'Afspil videoen';
+  let playerBlock = '<div class="player" id="player">' + posterEl
+    + '<button class="play" id="playBtn" type="button" aria-label="' + playLabel + '"><span>' + ICON_PLAY + (isAudio ? ICON_PAUSE : '') + '</span></button>'
+    + '</div>';
+  if (isAudio){
+    playerBlock += '<div class="audiobox"><audio id="lyd" controls preload="' + (embedded ? 'auto' : 'metadata') + '"'
+      + (audioSrc ? ' src="' + (embedded ? audioSrc : escapeHtml(audioSrc)) + '"' : '')
+      + '>Din browser kan ikke afspille lyd.</audio></div>';
+    const links = [];
+    if (s.audioUrl) links.push('<a href="' + escapeHtml(s.audioUrl) + '" target="_blank" rel="noopener">Åbn lydfilen for sig selv</a>');
+    playerBlock += '<p class="fallback">'
+      + (embedded ? 'Lyden ligger inde i denne fil og kan afspilles uden internet. ' : '')
+      + '<span class="audio-err">Lyden kunne ikke hentes lige nu. </span>'
+      + links.join('') + '</p>';
+    if (!embedded) playerBlock += '<div class="offline" role="status">Du er ikke på internettet, så lyden kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+  } else {
+    playerBlock += '<p class="fallback"><span class="lokal">Kortet er åbnet fra din egen computer, så videoen afspilles på YouTube i et nyt vindue. </span>'
+      + 'Virker afspilleren ikke? <a id="ytLink" href="' + escapeHtml(watch || '#') + '" target="_blank" rel="noopener">Åbn videoen på YouTube</a>.</p>'
+      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+  }
+
+  /* Om og kapitler */
+  const hasOm = !!(textHtml || s.note.trim()), hasKap = chapters.length > 0;
+  let colsBlock = '';
+  if (hasOm || hasKap){
+    colsBlock += '<div class="cols' + (hasOm && hasKap ? ' two' : '') + '">';
+    if (hasOm){
+      colsBlock += '<section class="om" aria-labelledby="om"><h2 id="om" class="minor">Om udsendelsen</h2>'
+        + textHtml + (s.note.trim() ? '<p class="note">' + escapeHtml(s.note.trim()) + '</p>' : '') + '</section>';
+    }
+    if (hasKap){
+      colsBlock += '<section aria-labelledby="kap"><h2 id="kap" class="minor">Spring til</h2><ol class="chapters" id="chapters">'
+        + chapters.map(c => '<li><button type="button" data-t="' + c.t + '"><span class="t">' + fmtTime(c.t) + '</span><span>' + escapeHtml(c.label) + '</span></button></li>').join('')
+        + '</ol></section>';
+    }
+    colsBlock += '</div>';
+  }
+
+  const transBlock = hasTranscript
+    ? '<details class="udskrift" id="udskrift"><summary><span>' + escapeHtml(transTitle)
+      + ' <small>(ca. ' + wordCount(s.transcript).toLocaleString('da-DK') + ' ord)</small></span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+      + '<div class="udskrift-body">' + transcriptHtml(s.transcript) + '</div></details>'
+    : '';
+
+  const ctas = s.ctas.filter(c => c.text.trim() && c.url.trim());
+  const ctaParts = [];
+  if (!isAudio && watch) ctaParts.push('<a class="cta-btn ghost" href="' + escapeHtml(watch) + '" target="_blank" rel="noopener">Se på YouTube</a>');
+  ctas.forEach(c => ctaParts.push('<a class="cta-btn" href="' + escapeHtml(c.url.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(c.text.trim()) + '</a>'));
+  const ctaBlock = ctaParts.length ? '<div class="cta-wrap">' + ctaParts.join('') + '</div>' : '';
+
+  const saveNote = isAudio
+    ? (embedded ? 'Et mediekort med en podcast. Gemmer hele kortet som én fil på din egen computer – lyden, beskrivelsen, tidsstemplerne og udskriften følger med.'
+                : 'Et mediekort med en podcast. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Lyden hentes fra nettet.')
+    : 'Et mediekort med en video. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Videoen bliver på YouTube.';
+  const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button class="save-btn" id="dlBtn" type="button">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
+    + '<span>Gem filen</span></button></div><p class="save-note">' + saveNote + '</p>';
+
+  const footParts = [];
+  if (dc.creator) footParts.push(escapeHtml(dc.creator));
+  if (dc.publisher) footParts.push(escapeHtml(dc.publisher));
+  const year = (dc.date && dc.date.match(/\d{4}/)) ? dc.date.match(/\d{4}/)[0] : String(new Date().getFullYear());
+  const footBlock = footParts.length ? '<footer class="site-foot"><p>' + footParts.join(' · ') + ' · ' + year + '</p></footer>' : '';
+
+  const metaLine = [];
+  if (s.location.trim()) metaLine.push(escapeHtml(s.location.trim()));
+  if (s.audioDuration && isAudio) metaLine.push('Varighed ' + fmtDuration(s.audioDuration));
+  const dotsBlock = s.theme === 'roskildetv'
+    ? '<div class="dots" aria-hidden="true">' + RTV_DOTS.map(c => '<i style="background:' + c + '"></i>').join('') + '</div>' : '';
+
+  const sourceData = {
+    format:'mediekort', builderVersion:BUILDER_VERSION,
+    theme: s.theme, mode: s.mode,
+    videoId: isAudio ? '' : id, videoUrl: isAudio ? '' : watch,
+    audioUrl: isAudio ? s.audioUrl : '', audioEmbedded: embedded, audioName: embedded ? s.audioName : '',
+    audioDuration: isAudio ? Math.round(s.audioDuration || 0) : 0,
+    kicker: s.kicker, title: s.title, location: s.location, shareImage: s.shareImage,
+    posterAlt: s.posterAlt, hasPoster: !!s.poster,
+    text: s.text, note: s.note, chapters: chapters,
+    transcriptTitle: s.transTitle, transcript: s.transcript,
+    ctas: s.ctas,
+    homeMode: homeMode, homeLabel: s.homeLabel, homeUrl: s.homeUrl,
+    visGem: s.visGem !== false, visOmFil: s.visOmFil !== false,
+    dublinCore: dc
+  };
+  const sourceJson = JSON.stringify(sourceData, null, 1).replace(/</g, '\\u003c');
+
+  const ogDesc = stripMdToPlain(s.text, 200);
+  const shareUrl = s.shareImage.trim();
+  const runtimeConfig = { mode: s.mode, id: isAudio ? '' : id, title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
+  const taellerBlock = (s.taellerBlock && !isPreview) ? s.taellerBlock + '\n' : '';
+  const aT = lighten(t.accent, 0.5);
+
+  return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
++ '<meta charset="UTF-8">\n'
++ '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
++ '<title>' + escapeHtml(pageTitle) + '</title>\n'
++ '<meta property="og:type" content="' + (isAudio ? 'website' : 'video.other') + '">\n'
++ '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
++ (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
++ (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
++ (s.poster ? '<link rel="icon" href="' + s.poster + '">\n' : '')
++ (dcMeta ? dcMeta + '\n' : '')
++ '<script type="application/json" id="builder-source-data">\n' + sourceJson + '\n<\/script>\n'
++ '<style>\n'
++ ':root{\n'
++ '  --accent:' + t.accent + '; --accent-dark:' + t.accentDark + '; --on-accent:' + t.onAccent + '; --accent-text:' + t.accentDark + ';\n'
++ '  --paper:' + t.paper + '; --surface:' + t.surface + '; --ink:' + t.ink + '; --body:' + t.body + ';\n'
++ '  --muted:' + t.muted + '; --line:' + t.line + '; --quote:' + t.quote + ';\n'
++ '  --tint:' + hexToRgba(t.accent, 0.07) + '; --tint-line:' + hexToRgba(t.accent, 0.35) + ';\n'
++ '  --shadow:rgba(30,25,15,0.10);\n'
++ '  --sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;\n'
++ '  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;\n'
++ '  --fs:1;\n'
++ '}\n'
++ 'body.dark{\n'
++ '  --paper:' + t.dPaper + '; --surface:' + t.dSurface + '; --ink:' + t.dInk + '; --body:' + t.dBody + ';\n'
++ '  --muted:' + t.dMuted + '; --line:' + t.dLine + '; --quote:' + t.dQuote + '; --accent-text:' + aT + ';\n'
++ '  --tint:' + hexToRgba(t.accent, 0.18) + '; --tint-line:' + hexToRgba(t.accent, 0.55) + ';\n'
++ '  --shadow:rgba(0,0,0,0.45);\n'
++ '}\n'
++ '*{box-sizing:border-box;}\n'
++ 'body{margin:0; background:var(--paper); color:var(--body); font-family:var(--sans); line-height:1.65;}\n'
++ 'a{color:var(--accent-text);}\n'
++ 'button{font-family:inherit;}\n'
++ ':focus-visible{outline:3px solid var(--accent-text); outline-offset:3px;}\n'
++ '.site-head{position:sticky; top:0; z-index:40; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px var(--shadow);}\n'
++ '.head-inner{max-width:1000px; margin:0 auto; padding:10px 18px; display:flex; align-items:center; gap:10px; min-height:56px;}\n'
++ '.head-tools{margin-left:auto; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}\n'
++ '.tool{background:transparent; border:none; color:var(--on-accent); cursor:pointer; font-size:16px; font-weight:700; padding:8px 11px; border-radius:6px; line-height:1; min-width:44px; min-height:44px;}\n'
++ '.tool:hover{background:rgba(255,255,255,0.16);}\n'
++ '.tool:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ '.tool svg{width:22px; height:22px; display:block; margin:0 auto;}\n'
++ '.tool.small{font-size:14px;}\n'
++ '.homewrap{display:none;}\n'
++ '.homewrap.show{display:block;}\n'
++ '.home-btn{display:inline-flex; align-items:center; gap:8px; padding:7px 15px 7px 11px; min-height:44px; border-radius:999px; border:2px solid rgba(255,255,255,0.6); color:var(--on-accent); text-decoration:none; font-size:15.5px; font-weight:700;}\n'
++ '.home-btn svg{width:18px; height:18px;}\n'
++ '.home-btn:hover{background:rgba(255,255,255,0.16);}\n'
++ '.home-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ 'main{max-width:860px; margin:0 auto; padding:30px 18px 10px; font-size:calc(17.5px * var(--fs));}\n'
++ '.dots{display:flex; align-items:flex-end; gap:5px; margin:0 0 10px;}\n'
++ '.dots i{display:block; border-radius:50%; width:9px; height:9px;}\n'
++ '.dots i:nth-child(2){width:10px;height:10px}.dots i:nth-child(3){width:11px;height:11px}.dots i:nth-child(4){width:12px;height:12px}.dots i:nth-child(5){width:14px;height:14px}.dots i:nth-child(6){width:16px;height:16px}\n'
++ '.eyebrow{font-size:0.8em; letter-spacing:0.11em; text-transform:uppercase; font-weight:700; color:var(--accent-text); margin-bottom:10px;}\n'
++ 'h1{font-family:var(--serif); font-size:2.1em; line-height:1.2; margin:0 0 8px; color:var(--ink); font-weight:700;}\n'
++ '.metaline{font-size:0.95em; color:var(--muted); margin:0 0 6px;}\n'
++ '.player{position:relative; aspect-ratio:16/9; background:var(--accent-dark); border-radius:10px; overflow:hidden; margin-top:20px; box-shadow:0 4px 14px var(--shadow);}\n'
++ '.player svg.drawn, .player img.poster, .player iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}\n'
++ '.player img.poster{object-fit:cover;}\n'
++ '.play{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:none; border:0; color:var(--on-accent); cursor:pointer;}\n'
++ '.play span{background:var(--accent); opacity:.95; border-radius:50%; width:min(5.2rem,17vw); height:min(5.2rem,17vw); display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 6px rgba(255,255,255,.3);}\n'
++ '.play:hover span{transform:scale(1.05);}\n'
++ '.play:focus-visible span{outline:3px solid #fff; outline-offset:4px;}\n'
++ '.play svg{width:44%; height:44%;}\n'
++ '.play .i-play{margin-left:8%;}\n'
++ '.play .i-pause{display:none;}\n'
++ '.player.playing .play .i-play{display:none;}\n'
++ '.player.playing .play .i-pause{display:block;}\n'
++ '.player.playing .play span{opacity:.55;}\n'
++ '.audiobox{position:sticky; top:64px; z-index:20; background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:12px; box-shadow:0 3px 10px var(--shadow);}\n'
++ '.audiobox audio{width:100%; display:block;}\n'
++ '.fallback{font-size:0.85em; color:var(--muted); margin:10px 0 0;}\n'
++ '.fallback .lokal, .fallback .audio-err{display:none;}\n'
++ '.is-local .fallback .lokal, .audio-error .fallback .audio-err{display:inline;}\n'
++ '.offline{display:none; background:var(--tint); border-left:4px solid var(--accent); padding:12px 16px; margin-top:12px; font-size:0.95em; color:var(--ink);}\n'
++ '.is-offline .offline{display:block;}\n'
++ '.cols{display:grid; grid-template-columns:1fr; gap:30px; margin-top:34px;}\n'
++ '@media (min-width:760px){ .cols.two{grid-template-columns:1fr 17.5em;} }\n'
++ 'h2.minor{font-size:1.2em; color:var(--ink); margin:0 0 12px;}\n'
++ '.om h2:not(.minor){font-size:1.2em; color:var(--ink); margin:26px 0 10px;}\n'
++ '.om h3, .udskrift-body h3{font-size:1.08em; color:var(--ink); margin:22px 0 8px;}\n'
++ '.om h4, .om h5, .udskrift-body h4{font-size:1em; color:var(--ink); margin:18px 0 6px;}\n'
++ '.om p, .udskrift-body p{margin:0 0 15px;}\n'
++ '.om ul, .om ol, .udskrift-body ul, .udskrift-body ol{margin:0 0 15px; padding-left:22px;}\n'
++ '.om li::marker{color:var(--accent);}\n'
++ '.om blockquote, .udskrift-body blockquote{margin:18px 0; padding:4px 0 4px 16px; border-left:4px solid var(--accent); color:var(--quote); font-style:italic;}\n'
++ '.om code, .udskrift-body code{background:var(--tint); padding:0 5px; border-radius:3px; font-size:0.9em;}\n'
++ '.om hr, .udskrift-body hr{border:none; border-top:1px solid var(--line); margin:26px 0;}\n'
++ '.note{background:var(--tint); border:1px solid var(--tint-line); padding:10px 14px; border-radius:6px; font-size:0.85em; color:var(--ink);}\n'
++ 'ol.chapters{list-style:none; margin:0; padding:0; border-top:1px solid var(--line);}\n'
++ 'ol.chapters li{border-bottom:1px solid var(--line);}\n'
++ 'ol.chapters button{display:flex; gap:12px; width:100%; text-align:left; background:none; border:0; border-left:4px solid transparent; color:var(--ink); padding:11px 6px; font-size:0.95em; line-height:1.35; min-height:44px; cursor:pointer;}\n'
++ 'ol.chapters button:hover{background:var(--tint);}\n'
++ 'ol.chapters button[aria-current]{background:var(--tint); border-left-color:var(--accent); font-weight:700;}\n'
++ '.t{font-variant-numeric:tabular-nums; color:var(--accent-text); min-width:3.6em; font-weight:700;}\n'
++ '.udskrift{margin:34px 0 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface);}\n'
++ '.udskrift summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:1.05em; padding:16px 18px; min-height:44px; display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none;}\n'
++ '.udskrift summary::-webkit-details-marker{display:none;}\n'
++ '.udskrift summary small{font-weight:400; color:var(--muted); font-size:0.85em;}\n'
++ '.udskrift[open] summary{border-bottom:1px solid var(--line);}\n'
++ '.udskrift[open] .chevron, .meta[open] .chevron{transform:rotate(180deg);}\n'
++ '.udskrift-body{padding:18px 18px 6px; font-family:var(--serif); font-size:1.02em; line-height:1.75;}\n'
++ '.ts{font-family:var(--sans); font-variant-numeric:tabular-nums; font-size:0.78em; font-weight:700; color:var(--accent-text); background:var(--tint); border:1px solid var(--tint-line); border-radius:999px; padding:3px 10px; min-height:32px; margin-right:4px; cursor:pointer; vertical-align:1px;}\n'
++ '.ts:hover{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}\n'
++ '.cta-wrap{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:40px 0 10px;}\n'
++ '.cta-btn{background:var(--accent); color:var(--on-accent); text-decoration:none; font-weight:700; font-size:1em; padding:13px 24px; min-height:48px; display:inline-flex; align-items:center; border-radius:8px; box-shadow:0 3px 10px var(--shadow); border:2px solid var(--accent);}\n'
++ '.cta-btn:hover{background:var(--accent-dark); border-color:var(--accent-dark);}\n'
++ '.cta-btn.ghost{background:transparent; color:var(--accent-text); border-color:var(--accent-text); box-shadow:none;}\n'
++ '.cta-btn.ghost:hover{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}\n'
++ '.save-wrap{display:flex; justify-content:center; margin:34px 0 6px;}\n'
++ '.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent-text); border:2px solid var(--accent-text); border-radius:999px; font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}\n'
++ '.save-btn:hover{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}\n'
++ '.save-btn:focus-visible{outline:3px solid var(--accent-text); outline-offset:3px;}\n'
++ '.save-btn svg{width:20px; height:20px;}\n'
++ '.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px auto 0; max-width:36em;}\n'
++ '.meta{margin:40px 0 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px;}\n'
++ '.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none; min-height:32px;}\n'
++ '.meta summary::-webkit-details-marker{display:none;}\n'
++ '.meta[open] summary{margin-bottom:12px;}\n'
++ '.meta-list{margin:0;}\n'
++ '.meta-row{padding:7px 0; border-top:1px solid var(--line);}\n'
++ '.meta-row dt{font-weight:700; color:var(--ink); font-size:0.88em;}\n'
++ '.meta-row dd{margin:2px 0 0; font-size:0.93em; color:var(--body); word-break:break-word;}\n'
++ '.dc-tag{font-weight:400; color:var(--muted); font-size:0.88em;}\n'
++ '.chevron{color:var(--muted); transition:transform .2s ease;}\n'
++ '.site-foot{margin-top:44px; background:var(--accent-dark); color:var(--on-accent);}\n'
++ '.site-foot p{max-width:860px; margin:0 auto; padding:20px 18px; text-align:center; font-size:14.5px;}\n'
++ '#toTop{position:fixed; right:18px; bottom:18px; z-index:30; background:var(--accent); color:var(--on-accent); border:none; border-radius:50%; width:48px; height:48px; cursor:pointer; box-shadow:0 4px 14px var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease;}\n'
++ '#toTop.show{opacity:1; pointer-events:auto;}\n'
++ '#toTop svg{width:22px; height:22px; margin:0 auto; display:block;}\n'
++ '@media (prefers-reduced-motion:reduce){ *{transition:none !important;} }\n'
++ '@media print{ .site-head, #toTop, .play, .audiobox, .fallback, .offline, .save-wrap, .save-note, .cta-wrap{display:none !important;} body{background:#fff;} .udskrift-body{font-size:0.95em;} }\n'
++ '</style>\n</head>\n<body>\n'
++ '<header class="site-head">\n<div class="head-inner">\n'
++ homeBlock
++ '<div class="head-tools">'
++ '<button class="tool small" id="fontDec" type="button" aria-label="Mindre skrift">-A</button>'
++ '<button class="tool" id="fontInc" type="button" aria-label="Større skrift">+A</button>'
++ '<button class="tool" id="darkBtn" type="button" aria-label="Skift mellem lys og mørk baggrund"><svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 15.4A8.6 8.6 0 0 1 8.6 3.6a8.6 8.6 0 1 0 11.8 11.8z"/></svg>'
++ '<svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>'
++ '</div>\n</div>\n</header>\n'
++ '<main id="top">\n'
++ dotsBlock
++ (s.kicker ? '<div class="eyebrow">' + escapeHtml(s.kicker) + '</div>' : '')
++ '<h1>' + escapeHtml(pageTitle) + '</h1>'
++ (metaLine.length ? '<p class="metaline">' + metaLine.join(' · ') + '</p>' : '')
++ '\n' + playerBlock + '\n' + colsBlock + '\n' + transBlock + '\n' + ctaBlock + saveBlock + dcBlock
++ '\n</main>\n' + footBlock
++ '<button id="toTop" type="button" aria-label="Til toppen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>\n'
++ taellerBlock
++ '<script>\n(' + mediekortRuntime.toString() + ')(' + JSON.stringify(runtimeConfig).replace(/</g, '\\u003c') + ');\n<\/script>\n'
++ '</body>\n</html>';
+}
+
+/* =======================================================================
+   Formularen
+   ======================================================================= */
+
+function readForm(){
+  state.kicker = $('fKicker').value;
+  state.title = $('fTitle').value;
+  state.location = $('fLocation').value;
+  state.shareImage = $('fShare').value;
+  state.posterAlt = $('fPosterAlt').value;
+  state.text = $('fText').value;
+  state.note = $('fNote').value;
+  state.chaptersRaw = $('fChapters').value;
+  state.transTitle = $('fTransTitle').value;
+  state.transcript = $('fTranscript').value;
+  for (let i = 0; i < 3; i++){
+    state.ctas[i].text = $('cta' + (i+1) + 'text').value;
+    state.ctas[i].url = $('cta' + (i+1) + 'url').value;
+  }
+  state.homeMode = $('homeMode').value;
+  state.homeLabel = $('homeLabel').value;
+  state.homeUrl = $('homeUrl').value;
+  state.visGem = $('visGem').checked;
+  state.visOmFil = $('visOmFil').checked;
+}
+
+function hasMedia(){
+  return state.mode === 'audio' ? !!(state.audioUrl || state.audioBlob) : !!state.videoId;
+}
+
+function updateSizeBar(){
+  let n = state.poster.length * 0.75 + (state.transcript.length + state.text.length) * 1.05;
+  if (state.mode === 'audio' && state.audioBlob) n += state.audioBlob.size * 4 / 3;
+  const mb = n / (1024*1024);
+  const bar = $('sizeBar');
+  bar.className = 'sizebar' + (mb > 80 ? ' over' : (mb > 25 ? ' warn' : ''));
+  bar.textContent = 'Indhold i filen: ' + fmtBytes(n)
+    + (mb > 80 ? ' — filen er meget stor. Den virker, men kan være langsom at åbne på ældre computere.'
+      : (mb > 25 ? ' — filen er for stor til at sende som vedhæftning i en mail. Del den på USB-stik eller via en delt mappe.' : ''));
+}
+
+function updateTransCount(){
+  const n = wordCount(state.transcript);
+  const ts = (state.transcript.match(/(^|\n)\s*(?:[-*]\s+)?\[(?:\d{1,2}:)?\d{1,2}:\d{2}/g) || []).length;
+  $('transCount').textContent = n ? 'Ca. ' + n.toLocaleString('da-DK') + ' ord' + (ts ? ', ' + ts + ' tidsstempler man kan springe til' : '') + '.' : '';
+}
+
+function updateChapCheck(){
+  const r = parseChapters(state.chaptersRaw);
+  const html = r.list.map(c => '<li><span class="t">' + fmtTime(c.t) + '</span><span>' + escapeHtml(c.label) + '</span></li>');
+  r.bad.forEach(b => html.push('<li class="bad"><span class="t">?</span><span>Kan ikke læses: ' + escapeHtml(b) + '</span></li>'));
+  $('chapCheck').innerHTML = html.join('');
+}
+
+function setMode(mode){
+  state.mode = mode === 'audio' ? 'audio' : 'video';
+  document.querySelectorAll('#modePicker input').forEach(r => { r.checked = (r.value === state.mode); });
+  document.querySelectorAll('#modePicker .mode-option').forEach(o => o.classList.toggle('selected', o.dataset.mode === state.mode));
+  $('videoFields').hidden = state.mode !== 'video';
+  $('audioFields').hidden = state.mode !== 'audio';
+  $('shareYtRow').hidden = state.mode !== 'video';
+  $('btnThumb').hidden = state.mode !== 'video';
+  $('previewNote').textContent = state.mode === 'video'
+    ? 'I forhåndsvisningen åbner afspil og tidsstempler videoen på YouTube i et nyt vindue. Lagt på en hjemmeside afspiller kortet videoen direkte på siden.'
+    : 'Lyden kan afspilles direkte her i forhåndsvisningen, og tidsstemplerne virker. Det gør de også, når kortet åbnes fra din egen computer.';
+  renderPreview();
+}
+
+function selectTheme(themeKey){
+  state.theme = THEMES[themeKey] ? themeKey : 'original';
+  document.querySelectorAll('#themePicker input[name="theme"]').forEach(r => { r.checked = (r.value === state.theme); });
+  document.querySelectorAll('#themePicker .theme-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.theme === state.theme));
+}
+
+// Felter, størrelse og Dublin Core opdateres med det samme. Selve rammen tegnes
+// med en kort forsinkelse, så skrivningen ikke bliver tung med lange udskrifter.
+let previewTimer = null;
+function schedulePreview(){
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    $('previewFrame').srcdoc = buildPageHTML(state, { preview:true, audioSrc: state.mode === 'audio' ? (state.audioBlobUrl || state.audioUrl) : '' });
+  }, 200);
+}
+function renderPreview(){
+  readForm();
+  syncAutoDc();
+  updateSizeBar();
+  updateTransCount();
+  $('generateBtn').disabled = !(state.title.trim() && hasMedia());
+  $('btnOembed').disabled = !state.videoId;
+  $('btnThumb').disabled = !state.videoId;
+  $('btnShareYt').disabled = !state.videoId;
+  schedulePreview();
+}
+
+function onUrlInput(){
+  const raw = $('fUrl').value.trim();
+  const id = parseYouTube(raw);
+  const st = $('urlStatus');
+  state.videoId = id;
+  if (!raw){ st.textContent = ''; st.className = 'status'; }
+  else if (id){ st.textContent = 'Forstået — video-id ' + id + '.'; st.className = 'status'; }
+  else { st.textContent = 'Det ligner ikke en YouTube-adresse. Den skal indeholde youtube.com eller youtu.be.'; st.className = 'status bad'; }
+  renderPreview();
+}
+
+['fKicker','fTitle','fLocation','fShare','fPosterAlt','fText','fNote','fTransTitle','fTranscript',
+ 'cta1text','cta1url','cta2text','cta2url','cta3text','cta3url',
+ 'homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('input', renderPreview);
+  if (el.tagName === 'SELECT' || el.type === 'checkbox') el.addEventListener('change', renderPreview);
+});
+$('fChapters').addEventListener('input', () => { readForm(); updateChapCheck(); renderPreview(); });
+$('fUrl').addEventListener('input', onUrlInput);
+let audioUrlTimer = null;
+$('fAudioUrl').addEventListener('input', () => { clearTimeout(audioUrlTimer); audioUrlTimer = setTimeout(testAudioUrl, 600); });
+
+DC_FIELDS.forEach(key => {
+  const el = $(dcInputId(key));
+  el.addEventListener('input', () => {
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+    renderPreview();
+  });
+  if (el.tagName === 'SELECT') el.addEventListener('change', () => {
+    if (key === 'type') dcTouched.type = true;
+    renderPreview();
+  });
+});
+
+document.querySelectorAll('#themePicker input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', () => { selectTheme(radio.value); renderPreview(); });
+});
+document.querySelectorAll('#modePicker input[name="mode"]').forEach(radio => {
+  radio.addEventListener('change', () => setMode(radio.value));
+});
+
+/* =======================================================================
+   Indlæsning af en eksisterende fil (Builder-standard afsnit 7)
+   ======================================================================= */
+
+function extractTaellerBlock(text){
+  const startMark = text.indexOf('TÆLLER');
+  if (startMark === -1) return '';
+  const endMark = text.indexOf('TÆLLER SLUT');
+  if (endMark === -1) return '';
+  const start = text.lastIndexOf('<!--', startMark);
+  const end = text.indexOf('-->', endMark);
+  if (start === -1 || end === -1 || end < start) return '';
+  return text.slice(start, end + 3);
+}
+
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+let publisherFixed = '';
+function fillDcFields(dc){
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    let v = (dc && dc[key]) ? dc[key] : '';
+    if (key === 'publisher'){
+      const orig = v;
+      v = normalizePublisher(v);
+      if (orig && orig !== v) publisherFixed = orig + '" er rettet til "' + v;
+      ensurePublisherOption(v);
+    }
+    if (!v){
+      if (key === 'format') v = 'text/html';
+      else if (key === 'language') v = 'da';
+    }
+    if (key === 'type' && !v) v = state.mode === 'audio' ? 'Sound' : 'MovingImage';
+    el.value = v;
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+  });
+  // Type følger stadig valget af video/lyd, hvis den står på det forventede.
+  dcTouched.type = $('dcType').value !== (state.mode === 'audio' ? 'Sound' : 'MovingImage');
+}
+
+$('loadPage').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const st = $('loadStatus');
+  const reject = (txt) => { st.textContent = txt; st.className = 'status bad'; e.target.value = ''; };
+  st.textContent = 'Læser fil …'; st.className = 'status pending';
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const dataScript = doc.getElementById('builder-source-data');
+    let data = null;
+    try { data = dataScript ? JSON.parse(dataScript.textContent) : null; } catch(err){ data = null; }
+    if (!data) return reject('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.');
+    if (data.format !== 'mediekort') return reject('Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.');
+    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION) return reject('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.');
+
+    selectTheme(data.theme || 'original');
+    state.mode = data.mode === 'audio' ? 'audio' : 'video';
+
+    $('fUrl').value = data.videoUrl || (data.videoId ? watchUrl(data.videoId) : '');
+    state.videoId = parseYouTube($('fUrl').value);
+    $('fAudioUrl').value = data.audioUrl || '';
+    state.audioUrl = data.audioUrl || '';
+    state.audioDuration = data.audioDuration || 0;
+
+    $('fKicker').value = data.kicker || '';
+    $('fTitle').value = data.title || '';
+    $('fLocation').value = data.location || '';
+    $('fShare').value = data.shareImage || '';
+    $('fPosterAlt').value = data.posterAlt || '';
+    $('fText').value = data.text || '';
+    $('fNote').value = data.note || '';
+    $('fChapters').value = chaptersToText(data.chapters);
+    $('fTransTitle').value = data.transcriptTitle || '';
+    $('fTranscript').value = data.transcript || '';
+    (data.ctas || []).forEach((c, i) => {
+      if (i < 3){ $('cta' + (i+1) + 'text').value = c.text || ''; $('cta' + (i+1) + 'url').value = c.url || ''; }
+    });
+    $('homeMode').value = (data.homeMode === 'always' || data.homeMode === 'never') ? data.homeMode : 'auto';
+    $('homeLabel').value = data.homeLabel || '';
+    $('homeUrl').value = data.homeUrl || '';
+    $('visGem').checked = data.visGem !== false;
+    $('visOmFil').checked = data.visOmFil !== false;
+
+    publisherFixed = '';
+    fillDcFields(data.dublinCore || {});
+
+    // Plakatbillede og lyd hentes tilbage fra selve dokumentet.
+    const pImg = doc.getElementById('poster');
+    const pSrc = pImg ? (pImg.getAttribute('src') || '') : '';
+    if (pSrc.indexOf('data:image/') === 0){
+      const img = await loadImage(pSrc);
+      setPoster(pSrc, '<b>Fra den indlæste fil</b><br>' + img.naturalWidth + ' × ' + img.naturalHeight + ' pixel');
+      $('posterStatus').textContent = 'Billede indlæst fra fil'; $('posterStatus').className = 'status';
+    } else {
+      setPoster('', '');
+    }
+    const aEl = doc.getElementById('lyd');
+    const aSrc = aEl ? (aEl.getAttribute('src') || '') : '';
+    if (aSrc.indexOf('data:') === 0){
+      const blob = await (await fetch(aSrc)).blob();
+      setAudioBlob(blob, data.audioName || 'lyd fra den indlæste fil');
+    } else {
+      setAudioBlob(null, '');
+    }
+
+    state.taellerBlock = extractTaellerBlock(text);
+    readForm();
+    updateChapCheck();
+    setMode(state.mode);
+    if (state.mode === 'video') onUrlInput();
+    if (state.mode === 'audio' && state.audioUrl) testAudioUrl();
+
+    st.textContent = 'Indlæst: ' + file.name
+      + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
+      + (publisherFixed ? ' · udgiveren "' + publisherFixed + '"' : '');
+    st.className = 'status';
+    renderPreview();
+  } catch(err){
+    st.textContent = 'Fejl ved indlæsning: ' + err.message;
+    st.className = 'status bad';
+  }
+  e.target.value = '';
+});
+
+/* =======================================================================
+   Gem
+   ======================================================================= */
+
+function downloadBlob(content, type, filename){
+  const blob = content instanceof Blob ? content : new Blob([content], { type:type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+$('metaJsonBtn').addEventListener('click', () => {
+  readForm(); syncAutoDc();
+  const dc = collectDublinCore();
+  const msg = $('msgBox');
+  if (!Object.keys(dc).length){
+    msg.textContent = 'Der er ingen Dublin Core-felter udfyldt endnu.';
+    msg.className = 'msg err';
+    return;
+  }
+  const payload = { '@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString() };
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json', slugify(state.title, 'mediekort') + '-metadata.json');
+  msg.textContent = 'Metadatafilen er downloadet.';
+  msg.className = 'msg ok';
+});
+
+$('generateBtn').addEventListener('click', async () => {
+  const msg = $('msgBox');
+  const btn = $('generateBtn');
+  try {
+    readForm(); syncAutoDc();
+    if (!hasMedia()){
+      msg.textContent = state.mode === 'audio' ? 'Skriv adressen på lydfilen, eller vælg en lydfil, først.' : 'Skriv adressen på YouTube-videoen først.';
+      msg.className = 'msg err';
+      return;
+    }
+    let audioSrc = '';
+    if (state.mode === 'audio'){
+      if (state.audioBlob){
+        btn.disabled = true;
+        msg.textContent = 'Lægger lyden ind i filen … det kan tage et øjeblik.';
+        msg.className = 'msg ok';
+        audioSrc = await blobToDataUrl(state.audioBlob);
+      } else audioSrc = state.audioUrl;
+    }
+    const html = buildPageHTML(state, { preview:false, audioSrc: audioSrc });
+    const name = slugify(state.title, 'mediekort') + '.html';
+    const blob = new Blob([html], { type:'text/html;charset=utf-8' });
+    downloadBlob(blob, '', name);
+    const dc = collectDublinCore();
+    const warn = [];
+    if (!dc.publisher) warn.push('udgiver');
+    if (!dc.description) warn.push('beskrivelse');
+    msg.textContent = 'Mediekortet er gemt som ' + name + ' (' + fmtBytes(blob.size) + '). Det kan åbnes direkte i browseren.'
+      + (warn.length ? ' Bemærk: uden ' + warn.join(' og ') + ' er kortet sværere at finde i søgesiden.' : '')
+      + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig i filen.' : '');
+    msg.className = 'msg ' + (warn.length ? 'err' : 'ok');
+  } catch(err){
+    msg.textContent = 'Der gik noget galt: ' + err.message;
+    msg.className = 'msg err';
+  } finally {
+    btn.disabled = !(state.title.trim() && hasMedia());
+  }
+});
+
+/* ---------- Start ---------- */
+selectTheme('original');
+setMode('video');
+</script>
+</body>
+</html>

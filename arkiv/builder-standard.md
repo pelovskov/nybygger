@@ -3,8 +3,8 @@
 **Fælles specifikation for værktøjskassen**
 Version 1.1 · september 2026
 
-Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.2).
-Når noget er i tvivl, er det referencefilen der gælder. De få steder, hvor standarden bevidst er foran referencefilen, er markeret med **[ret i reference]** og samlet i afsnit 13.
+Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.3).
+Når noget er i tvivl, er det referencefilen der gælder.
 
 ---
 
@@ -78,7 +78,7 @@ Grid: `1fr 420px`, falder til én kolonne under 900 px.
 
 Forhåndsvisningen opdateres ved hvert tastetryk (`renderPreview()`) og bygges med samme funktion som den endelige fil, ellers driver de fra hinanden. Tællerkoden udelades bevidst i forhåndsvisningen.
 
-Topbarens overskrift er appens navn i Georgia 25 px. Versionsnummeret står i underlinjen, fx "… · kører lokalt, ingen server · version 1.2". Browserfanens `<title>` er appens navn.
+Topbarens overskrift er appens navn i Georgia 25 px. Versionsnummeret står i underlinjen, fx "… · kører lokalt, ingen server · version 1.3". Browserfanens `<title>` er appens navn.
 
 ### Rækkefølge af felter
 
@@ -214,7 +214,7 @@ Samme 15 felter, samme rækkefølge og samme labels i alle apps. Hjælpeteksten 
 | 14 | dc.coverage | Dækning | sted og/eller periode, udfyldes automatisk fra Sted | (auto) |
 | 15 | dc.rights | Rettigheder | ophavsret og vilkår for brug | |
 
-Dropdown til dc.type, i denne rækkefølge: Text, Image, Sound, MovingImage, InteractiveResource, Collection, Event. Hver app forvælger sin egen. **[ret i reference: MovingImage og Event mangler]**
+Dropdown til dc.type, i denne rækkefølge: Text, Image, Sound, MovingImage, InteractiveResource, Collection, Event. Hver app forvælger sin egen.
 
 ### Regler
 
@@ -250,7 +250,7 @@ const PUBLISHERS = [
 
 Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stavemåder (tankestreg, "Røde Kors Roskilde", "SFB", "privat" med lille p) skaber nye grupper i søgesiden og regnes som fejl.
 
-Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". **[ret i reference: Sidebyggeren beholder i dag det gamle navn som ekstra valg]**
+Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". Status ved indlæsning nævner rettelsen. Står der et helt ukendt navn, vises det som ekstra valg markeret "ikke på listen", så det ikke går tabt, men kan rettes.
 
 **dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026`. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Forslaget kan overskrives.
 
@@ -509,7 +509,7 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 ## 12. Ændringslog
 
 **Version 1.1 — september 2026.**
-- Ny referenceimplementering: Sidebygger (`sidebygger-hs.html`, v1.2) i stedet for Lydfortælling · Bygger.
+- Ny referenceimplementering: Sidebygger (`sidebygger-hs.html`, v1.3) i stedet for Lydfortælling · Bygger.
 - Layout 1fr 420px / 900 px / 660 px, som i referencen.
 - Fem temaer med lys og mørk udgave, defineret i ét `THEMES`-objekt. Nyt: Historisk Samfund og Roskilde TV.
 - Fem faste udgivere i ét `PUBLISHERS`-array med præfikser. "Røde Kors Roskilde" er erstattet af "Røde Kors". Almindelig bindestreg.
@@ -529,10 +529,6 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 ---
 
 ## 13. Åbne punkter
-
-**Ret i referencen (Sidebygger):**
-- dc.type-listen mangler MovingImage og Event.
-- Gamle udgiverværdier beholdes i dag som ekstra valg "(fra ældre fil)" i stedet for at blive rettet til "Røde Kors".
 
 **Afklares, når byggeren tages op:**
 - dc.type for Henvisning, Vejledning og PWA.

@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Album · Bygger</title>
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .field .hint, p.hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none; letter-spacing:0; font-size:14.5px; line-height:1.45; }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--accent-ui, #385261); cursor:pointer; }
+  .check span strong{ font-weight:650; }
+  .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  input[type=text], input[type=url], textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  input[type=text]:focus, input[type=url]:focus, textarea:focus, select:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  button:focus-visible, summary:focus-visible{ outline:2px solid var(--rust); outline-offset:2px; }
+  select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  .filebox{ border:1px dashed var(--line); border-radius:3px; padding:14px; background:#f7f3e7; font-size:14.5px; }
+  .filebox input{ font-size:14px; }
+  .filebox .status{ margin-top:9px; font-size:13.5px; color:var(--moss); font-weight:600; }
+  .filebox .status.pending{ color:#7A6522; }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+
+  .theme-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+  .theme-option{
+    flex:1; min-width:132px; position:relative; border:2px solid var(--line); border-radius:8px;
+    padding:12px 12px 11px; cursor:pointer; background:#fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .theme-option:hover{ border-color:#a89f89; }
+  .theme-option input{ position:absolute; top:11px; right:11px; width:19px; height:19px; margin:0; accent-color:var(--rust); cursor:pointer; }
+  .theme-option .swatches{ display:flex; gap:6px; margin-bottom:10px; }
+  .theme-option .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+  .theme-option .tname{ font-size:14.5px; font-weight:600; color:var(--ink); padding-right:22px; }
+  .theme-option.selected{ border-color:var(--theme-accent, var(--rust)); box-shadow: 0 0 0 2px var(--theme-accent, var(--rust)) inset, 0 2px 8px rgba(30,25,15,0.08); }
+
+  /* Albummets egne knapper og billedkort */
+  .btn{
+    font-family:var(--sans); font-size:14.5px; font-weight:600; min-height:44px; padding:10px 17px;
+    border-radius:4px; border:2px solid var(--rust); background:var(--rust); color:#fdf8ee; cursor:pointer;
+  }
+  .btn:hover:not(:disabled){ background:#82392a; border-color:#82392a; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.secondary{ background:#fff; color:var(--rust); }
+  .btn.secondary:hover:not(:disabled){ background:#f2ecdd; }
+  .btn.danger{ background:#fff; color:#8C2F2A; border-color:#8C2F2A; }
+  .btn.danger:hover{ background:#f6e6e3; }
+  .btn.icon{ min-width:44px; padding:8px 12px; font-size:17px; line-height:1; }
+  #fileInput{ display:none; }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .count-pill{ font-size:13.5px; color:var(--hint); font-weight:600; }
+  .imggrid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:14px; margin-bottom:20px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:5px; overflow:hidden; display:flex; flex-direction:column; }
+  .card > img, .card .placeholder{ display:block; width:100%; height:140px; object-fit:cover; background:var(--paper-dim); }
+  .card .placeholder{ display:flex; align-items:center; justify-content:center; color:var(--hint); font-size:13.5px; font-style:italic; }
+  .card .body{ padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .card .body .field{ margin-bottom:0; }
+  .card .body label{ margin-bottom:4px; }
+  .card input[type=text], .card textarea{ padding:8px 10px; }
+  .card textarea{ min-height:66px; }
+  .card .sizeinfo{ font-size:13.5px; color:var(--hint); }
+  .card .row-btns{ display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .move-btns{ display:flex; gap:6px; }
+  .empty-note{ color:var(--hint); font-style:italic; padding:4px 0 16px; font-size:14.5px; margin:0; }
+
+  .sizebar{
+    border:1px solid var(--line); border-radius:4px; background:#f7f3e7;
+    padding:11px 14px; font-size:14px; color:var(--moss); margin-bottom:22px; font-weight:600;
+  }
+  .sizebar.warn{ background:#f7efd9; color:#7A6522; }
+  .sizebar.over{ background:#f4ded9; color:#7d2c1a; }
+
+  .generate-btn{
+    width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px;
+  }
+  .generate-btn:disabled{ background:#c9beac; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+
+  details.dc{ border:1px solid var(--line); border-radius:4px; background:#f7f3e7; padding:14px 16px; margin-bottom:20px; }
+  details.dc summary{ cursor:pointer; font-size:14px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; padding:2px 0; }
+  details.dc summary::marker{ color:var(--rust); }
+  details.dc[open] summary{ margin-bottom:12px; }
+  details.dc .panel-sub{ font-size:13.5px; color:var(--hint); margin:0 0 16px; line-height:1.55; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 16px; }
+  .field-grid .field{ margin-bottom:16px; }
+  .field-grid label{ text-transform:none; letter-spacing:0; font-size:14px; }
+  .field-grid label .hint{ display:block; font-size:13px; color:var(--hint); font-weight:400; margin-top:3px; line-height:1.5; }
+  .meta-btn{
+    width:100%; padding:12px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px; min-height:44px;
+  }
+  .meta-btn:hover{ background:#f2ecdd; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:14px; font-weight:600; }
+  .phone-frame{ background:#fbf8ef; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 8px 24px rgba(30,25,15,0.10); }
+  #previewFrame{ width:100%; height:660px; border:none; border-radius:6px; background:#fbf8ef; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Album · Bygger</h1>
+  <span>Lav et billedalbum som én fil, hvor billederne kan klikkes store · kører lokalt, ingen server · version 3.0</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <!-- 1. Indlæs eksisterende fil -->
+    <div class="field">
+      <label for="loadPage">Indlæs eksisterende album (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="loadPage" accept=".html,text/html">
+        <div class="status" id="loadStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg en albumfil (.html), som er lavet med denne udgave af værktøjet, for at hente den ind i formularen og rette videre i den. Alt kommer med: billeder, tekster, tema og Dublin Core-felter. Album fra de tidligere udgaver kan ikke indlæses og skal laves om.</div>
+    </div>
+
+    <!-- 2. Tema -->
+    <div class="field">
+      <label>Tema</label>
+      <div class="theme-picker" id="themePicker">
+        <label class="theme-option" data-theme="original" style="--theme-accent:#9A4630">
+          <input type="radio" name="theme" value="original" checked>
+          <div class="swatches"><span class="swatch" style="background:#9A4630"></span><span class="swatch" style="background:#EDE7D8"></span></div>
+          <div class="tname">Oprindeligt</div>
+        </label>
+        <label class="theme-option" data-theme="historisk" style="--theme-accent:#385261">
+          <input type="radio" name="theme" value="historisk">
+          <div class="swatches"><span class="swatch" style="background:#385261"></span><span class="swatch" style="background:#6B7A5A"></span><span class="swatch" style="background:#F2F5F6"></span></div>
+          <div class="tname">Historisk Samfund</div>
+        </label>
+        <label class="theme-option" data-theme="lokalhistorisk2" style="--theme-accent:#9E2453">
+          <input type="radio" name="theme" value="lokalhistorisk2">
+          <div class="swatches"><span class="swatch" style="background:#9E2453"></span><span class="swatch" style="background:#FAF9F5"></span></div>
+          <div class="tname">Lokalhistorisk</div>
+        </label>
+        <label class="theme-option" data-theme="roedekors" style="--theme-accent:#E30A0B">
+          <input type="radio" name="theme" value="roedekors">
+          <div class="swatches"><span class="swatch" style="background:#E30A0B"></span><span class="swatch" style="background:#FFFFFF"></span></div>
+          <div class="tname">Røde Kors</div>
+        </label>
+        <label class="theme-option" data-theme="roskildetv" style="--theme-accent:#B03035">
+          <input type="radio" name="theme" value="roskildetv">
+          <div class="swatches"><span class="swatch" style="background:#B03035"></span><span class="swatch" style="background:conic-gradient(#4DB0E8 0% 17%, #3576BA 17% 33%, #8E2D62 33% 50%, #B03035 50% 67%, #E8803A 67% 83%, #EFAF45 83% 100%)"></span></div>
+          <div class="tname">Roskilde TV</div>
+        </label>
+      </div>
+    </div>
+
+    <!-- 3. Appens egne indholdsfelter -->
+    <div class="sectionhead">Albummet</div>
+
+    <div class="field">
+      <label for="albumTitle">Titel</label>
+      <input type="text" id="albumTitle" placeholder="fx Skomagerværkstedet på Algade">
+    </div>
+
+    <div class="field">
+      <label for="albumPlace">Sted (valgfri)</label>
+      <input type="text" id="albumPlace" placeholder="fx Roskilde, 1950-1960">
+      <div class="hint">Vises under titlen og udfylder automatisk <code>dc.coverage</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="albumDesc">Beskrivelse (valgfri)</label>
+      <textarea id="albumDesc" placeholder="Skriv en kort introduktion til albummet …&#10;&#10;## Om værkstedet&#10;&#10;Værkstedet lå i baggården fra 1952 …"></textarea>
+      <div class="hint">Markdown: <code>**fed**</code>, <code>*kursiv*</code>, <code>## Overskrift</code>, <code>### Underoverskrift</code>, <code>- punkt</code>, <code>1. punkt</code>, <code>&gt; citat</code>, <code>[tekst](https://…)</code>, <code>---</code> for en streg og <code>`kode`</code>. En tom linje giver et nyt afsnit. Beskrivelsen udfylder automatisk <code>dc.description</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="shareImage">Webadresse til delingsbillede (valgfri)</label>
+      <input type="url" id="shareImage" placeholder="https://…/forside.jpg">
+      <div class="hint">Billederne inde i filen kan ikke læses af fx Facebook. Skal albummet deles, så læg ét af billederne op som selvstændig fil og skriv adressen her.</div>
+    </div>
+
+    <div class="sectionhead">Billeder</div>
+
+    <p class="hint" style="margin:-4px 0 14px">Billederne skaleres automatisk ned til højst 1600 px på den længste led og lægges ind i filen. Dine originalfiler bliver kun læst, aldrig ændret. Kommer billederne fra <strong>Google Takeout</strong>, kan du markere både billedfilerne og deres <code>.json</code>-filer på én gang, også albummets egen <code>metadata.json</code>. Så hentes beskrivelser, optagetidspunkt og albumoplysninger automatisk. Kommer de fra <strong>Fotosafari</strong>, markerer du billederne og deres <code>.txt</code>-filer på samme måde. Så hentes beskrivelser og fotografens navn automatisk.</p>
+    <div class="toolbar">
+      <button class="btn" id="btnAddImages" type="button">Tilføj billeder</button>
+      <button class="btn secondary" id="btnSortDate" type="button" style="display:none">Sortér efter optagelsesdato</button>
+      <input type="file" id="fileInput" accept="image/*,.json,.txt" multiple>
+      <span class="count-pill" id="countPill">0 billeder</span>
+    </div>
+    <div class="imggrid" id="grid"></div>
+    <p class="empty-note" id="emptyNote">Der er ingen billeder endnu. Tryk på "Tilføj billeder" for at vælge nogle.</p>
+
+    <!-- 4. Knap i bunden -->
+    <div class="sectionhead">Knap i bunden (valgfri)</div>
+
+    <div class="field">
+      <div class="row2">
+        <div><input type="text" id="ctaText" placeholder="Knaptekst — fx Læs mere om værkstedet" aria-label="Knaptekst"></div>
+        <div><input type="url" id="ctaUrl" placeholder="https://..." aria-label="Webadresse til knappen"></div>
+      </div>
+      <div class="hint">Brug hele webadresser med <code>https://</code> foran. Så virker knappen også, når filen bliver flyttet eller sendt videre. Knappen vises kun, når både tekst og adresse er udfyldt.</div>
+    </div>
+
+    <!-- 5. Hjem-knap -->
+    <div class="sectionhead">Knap øverst</div>
+
+    <div class="field">
+      <label for="homeMode">Hjem-knap øverst (valgfri)</label>
+      <select id="homeMode">
+        <option value="auto" selected>Automatisk — vises kun når filen er del af en app eller samling</option>
+        <option value="always">Altid vist</option>
+        <option value="never">Aldrig vist</option>
+      </select>
+      <div class="row2" style="margin-top:10px">
+        <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem" aria-label="Tekst på hjem-knappen"></div>
+        <div><input type="text" id="homeUrl" placeholder="index.html" aria-label="Adresse for hjem-knappen"></div>
+      </div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+    </div>
+
+    <!-- 6. Nederst på den færdige side -->
+    <div class="field">
+      <label>Nederst på den færdige side</label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="visGem" checked>
+          <span>Vis knappen <strong>Gem filen</strong></span></label>
+        <label class="check"><input type="checkbox" id="visOmFil" checked>
+          <span>Vis den foldede liste <strong>Om denne fil</strong></span></label>
+      </div>
+      <div class="hint">Slår du dem fra, forsvinder de kun fra den synlige side. Dublin Core-oplysningerne
+        følger stadig med som skjulte meta-felter i toppen af filen, så albummet kan findes og identificeres
+        senere. Brug det, når albummet vises inde på et website, hvor de to knapper ikke hører hjemme.</div>
+    </div>
+
+    <!-- 7. Dublin Core -->
+    <details class="dc" id="dcDetails">
+      <summary>Dublin Core-metadata</summary>
+      <p class="panel-sub">De 15 felter følger med ind i den færdige fil — både som skjulte oplysninger i toppen og som en foldet liste nederst på siden. De er det, der gør albummet muligt at finde igen om mange år.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="dcTitle">Titel <span class="hint">dc.title — udfyldes automatisk fra titlen</span></label>
+          <input type="text" id="dcTitle">
+        </div>
+        <div class="field">
+          <label for="dcCreator">Ophav / skaber <span class="hint">dc.creator — fotografen eller den der har samlet albummet</span></label>
+          <input type="text" id="dcCreator" placeholder="F.eks. Fotograf Anders Jensen">
+        </div>
+        <div class="field">
+          <label for="dcSubject">Emne / nøgleord <span class="hint">dc.subject — adskil med semikolon</span></label>
+          <input type="text" id="dcSubject" placeholder="Håndværk; Algade; 1950erne">
+        </div>
+        <div class="field">
+          <label for="dcDescription">Beskrivelse <span class="hint">dc.description — udfyldes automatisk fra beskrivelsen</span></label>
+          <input type="text" id="dcDescription">
+        </div>
+        <div class="field">
+          <label for="dcPublisher">Udgiver / område <span class="hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset</span></label>
+          <select id="dcPublisher">
+            <option value="">(ikke valgt)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcContributor">Bidragyder <span class="hint">dc.contributor — den der har redigeret, fotograferet eller registreret</span></label>
+          <input type="text" id="dcContributor">
+        </div>
+        <div class="field">
+          <label for="dcDate">Dato <span class="hint">dc.date — helst ÅÅÅÅ-MM-DD, men fx "ca. 1955" er også i orden</span></label>
+          <input type="text" id="dcDate" placeholder="2026-09-27">
+        </div>
+        <div class="field">
+          <label for="dcType">Type <span class="hint">dc.type — DCMI-typeordforråd</span></label>
+          <select id="dcType">
+            <option value="Text">Text</option>
+            <option value="Image" selected>Image</option>
+            <option value="Sound">Sound</option>
+            <option value="MovingImage">MovingImage</option>
+            <option value="InteractiveResource">InteractiveResource</option>
+            <option value="Collection">Collection</option>
+            <option value="Event">Event</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcFormat">Format <span class="hint">dc.format — filens tekniske format</span></label>
+          <input type="text" id="dcFormat" value="text/html">
+        </div>
+        <div class="field">
+          <label for="dcIdentifier">Identifikator <span class="hint">dc.identifier — foreslås automatisk ud fra område og titel</span></label>
+          <input type="text" id="dcIdentifier" placeholder="F.eks. SFB-album-algade-2026">
+        </div>
+        <div class="field">
+          <label for="dcSource">Kilde <span class="hint">dc.source — hvor billederne stammer fra</span></label>
+          <input type="text" id="dcSource" placeholder="F.eks. Privatarkiv, familien Nielsen">
+        </div>
+        <div class="field">
+          <label for="dcLanguage">Sprog <span class="hint">dc.language — sprogkode, fx da</span></label>
+          <input type="text" id="dcLanguage" value="da">
+        </div>
+        <div class="field">
+          <label for="dcRelation">Relation <span class="hint">dc.relation — beslægtet materiale, fx en lydfortælling</span></label>
+          <input type="text" id="dcRelation">
+        </div>
+        <div class="field">
+          <label for="dcCoverage">Dækning <span class="hint">dc.coverage — sted og/eller periode, udfyldes automatisk fra Sted</span></label>
+          <input type="text" id="dcCoverage" placeholder="Roskilde, Danmark; 1950-1960">
+        </div>
+        <div class="field">
+          <label for="dcRights">Rettigheder <span class="hint">dc.rights — ophavsret og vilkår for brug</span></label>
+          <input type="text" id="dcRights" placeholder="F.eks. © Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse.">
+        </div>
+      </div>
+      <button class="meta-btn" id="metaJsonBtn" type="button">Gem metadata som separat JSON-fil</button>
+    </details>
+
+    <!-- 8. Generér -->
+    <div class="sizebar" id="sizeBar">Indhold i filen: 0 KB</div>
+
+    <button class="generate-btn" id="generateBtn" type="button" disabled>Generér album (.html)</button>
+    <div class="msg" id="msgBox"></div>
+
+  </div>
+
+  <div class="preview-pane">
+    <div class="label">Forhåndsvisning</div>
+    <div class="phone-frame">
+      <iframe id="previewFrame" title="Forhåndsvisning af det færdige album"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Stilarket til den færdige albumfil ============ -->
+<script type="text/plain" id="outputCss">
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--paper); color:var(--body); font-family:var(--sans); line-height:1.65;}
+a{color:var(--accent);}
+.site-head{position:sticky; top:0; z-index:40; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px var(--shadow);}
+.head-inner{max-width:1100px; margin:0 auto; padding:10px 18px; display:flex; align-items:center; gap:10px; min-height:56px;}
+.head-tools{margin-left:auto; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}
+.tool{background:transparent; border:none; color:var(--on-accent); cursor:pointer; font-family:var(--sans); font-size:16px; font-weight:700; padding:8px 11px; border-radius:6px; line-height:1; min-width:44px; min-height:44px;}
+.tool:hover{background:rgba(255,255,255,0.16);}
+.tool:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}
+.tool svg{width:22px; height:22px; display:block; margin:0 auto;}
+.tool.small{font-size:14px;}
+.homewrap{display:none;}
+.homewrap.show{display:block;}
+.home-btn{display:inline-flex; align-items:center; gap:8px; padding:7px 15px 7px 11px; border-radius:999px; border:2px solid rgba(255,255,255,0.6); color:var(--on-accent); text-decoration:none; font-size:15.5px; font-weight:700; min-height:44px;}
+.home-btn svg{width:18px; height:18px;}
+.home-btn:hover{background:rgba(255,255,255,0.16);}
+.home-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}
+main{max-width:1100px; margin:0 auto; padding:34px 18px 10px; font-size:calc(17.5px * var(--fs));}
+.narrow{max-width:760px; margin-left:auto; margin-right:auto;}
+h1{font-size:2.15em; line-height:1.18; margin:0 0 10px; color:var(--ink); font-weight:700;}
+.location{font-size:0.95em; color:var(--muted); margin:0 0 6px;}
+.intro{margin-top:22px;}
+.intro h2{font-size:1.4em; line-height:1.25; color:var(--ink); margin:1.5em 0 0.5em; padding-left:13px; border-left:5px solid var(--accent);}
+.intro h3{font-size:1.15em; color:var(--ink); margin:1.3em 0 0.4em;}
+.intro p{margin:0 0 1em;}
+.intro ul, .intro ol{margin:0 0 1em; padding-left:1.4em;}
+.intro li{margin-bottom:0.4em;}
+.intro li::marker{color:var(--accent);}
+.intro blockquote{margin:1.2em 0; padding:0.35em 0 0.35em 1em; border-left:4px solid var(--accent); color:var(--quote); font-style:italic;}
+.intro hr{border:none; border-top:1px solid var(--line); margin:1.8em 0;}
+.intro code{background:var(--code-bg); padding:1px 5px; border-radius:4px; font-size:0.92em;}
+.preview-note{font-size:0.85em; font-style:italic; color:var(--muted); margin-top:22px;}
+.grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(13em, 1fr)); gap:18px; margin-top:30px;}
+figure{margin:0;}
+.thumb{display:block; width:100%; padding:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface); cursor:zoom-in; font:inherit; color:inherit; box-shadow:0 3px 10px var(--shadow);}
+.thumb img{display:block; width:100%; height:10em; object-fit:cover; background:var(--surface);}
+.thumb:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.shot figcaption{padding:0.55em 2px 0; font-size:0.85em; line-height:1.5; color:var(--muted);}
+.shot figcaption b{display:block; color:var(--ink); font-size:1.06em; margin-bottom:2px;}
+.cta-wrap{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:40px auto 10px;}
+.cta-btn{background:var(--accent); color:var(--on-accent); text-decoration:none; font-weight:700; font-size:1.02em; padding:14px 26px; border-radius:8px; box-shadow:0 3px 10px var(--shadow);}
+.cta-btn:hover{background:var(--accent-dark);}
+.cta-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.save-wrap{display:flex; justify-content:center; margin:34px auto 6px;}
+.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); border-radius:999px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}
+.save-btn:hover{background:var(--accent); color:var(--on-accent);}
+.save-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.save-btn svg{width:20px; height:20px;}
+.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px auto 0;}
+.meta{margin:40px auto 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px;}
+.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none; min-height:32px;}
+.meta summary::-webkit-details-marker{display:none;}
+.meta summary:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.meta[open] summary{margin-bottom:12px;}
+.meta[open] .chevron{transform:rotate(180deg);}
+.meta-list{margin:0;}
+.meta-row{padding:7px 0; border-top:1px solid var(--line);}
+.meta-row dt{font-weight:700; color:var(--ink); font-size:0.88em;}
+.meta-row dd{margin:2px 0 0; font-size:0.93em; color:var(--body);}
+.dc-tag{font-weight:400; color:var(--muted); font-size:0.88em;}
+.site-foot{margin-top:44px; background:var(--accent-dark); color:var(--on-accent);}
+.site-foot p{max-width:760px; margin:0 auto; padding:20px 18px; text-align:center; font-size:14.5px;}
+.lightbox{position:fixed; inset:0; background:rgba(18,16,13,0.95); display:none; align-items:center; justify-content:center; padding:20px; z-index:100;}
+.lightbox.open{display:flex;}
+.lightbox figure{margin:0; max-width:min(92vw, 1040px); max-height:92vh; display:flex; flex-direction:column; align-items:center;}
+.lightbox img{max-width:100%; max-height:72vh; object-fit:contain; border-radius:4px; background:#000;}
+.lightbox figcaption{color:#F4F0E6; font-size:16.5px; margin-top:16px; max-width:70ch; white-space:pre-line; text-align:center;}
+.lightbox figcaption b{display:block; color:#fff; font-size:18px; margin-bottom:4px;}
+.lb-btn{position:absolute; background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.45); border-radius:50%; width:48px; height:48px; font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+.lb-btn:hover{background:rgba(255,255,255,0.26);}
+.lb-btn:focus-visible{outline:3px solid #fff; outline-offset:3px;}
+.lb-close{top:18px; right:18px;}
+.lb-prev{left:18px; top:50%; transform:translateY(-50%);}
+.lb-next{right:18px; top:50%; transform:translateY(-50%);}
+#toTop{position:fixed; right:18px; bottom:18px; z-index:30; background:var(--accent); color:var(--on-accent); border:none; border-radius:50%; width:48px; height:48px; cursor:pointer; box-shadow:0 4px 14px var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease;}
+#toTop.show{opacity:1; pointer-events:auto;}
+#toTop:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+#toTop svg{width:22px; height:22px; margin:0 auto; display:block;}
+@media (max-width:640px){ .lb-prev, .lb-next{width:44px; height:44px; font-size:18px;} }
+@media print{ .site-head, #toTop, .lightbox, .save-wrap, .save-note{display:none !important;} body{background:#fff;} }
+</script>
+
+<!-- ============ Scriptet i den færdige albumfil ============ -->
+<script type="text/plain" id="outputJs">
+(function(){
+  var CFG = window.ALBUM_CFG || {};
+
+  /* --- Skriftstørrelse og mørk tilstand --- */
+  var fs = 1;
+  function setFs(v){ fs = Math.min(1.7, Math.max(0.85, Math.round(v * 10) / 10)); document.documentElement.style.setProperty("--fs", fs.toFixed(2)); }
+  document.getElementById("fontInc").addEventListener("click", function(){ setFs(fs + 0.1); });
+  document.getElementById("fontDec").addEventListener("click", function(){ setFs(fs - 0.1); });
+  document.getElementById("darkBtn").addEventListener("click", function(){
+    var on = document.body.classList.toggle("dark");
+    document.getElementById("iconMoon").style.display = on ? "none" : "block";
+    document.getElementById("iconSun").style.display = on ? "block" : "none";
+  });
+
+  /* --- Op-pil --- */
+  var toTop = document.getElementById("toTop");
+  window.addEventListener("scroll", function(){ toTop.classList.toggle("show", window.scrollY > 400); });
+  toTop.addEventListener("click", function(){ window.scrollTo({top:0, behavior:"smooth"}); });
+
+  /* --- Lysboks med bladring --- */
+  var figures = Array.prototype.slice.call(document.querySelectorAll("figure.shot"));
+  var shots = figures.map(function(fig){
+    var cap = fig.querySelector("figcaption");
+    var strong = cap ? cap.querySelector("b") : null;
+    var body = cap ? cap.querySelector("span") : null;
+    var img = fig.querySelector("img");
+    return { src: img.getAttribute("src"), alt: img.getAttribute("alt") || "",
+             title: strong ? strong.textContent : "", description: body ? body.textContent : "" };
+  });
+  var lightbox = document.getElementById("lightbox");
+  var lbImg = document.getElementById("lbImg");
+  var lbCap = document.getElementById("lbCap");
+  var current = 0, lastFocused = null;
+
+  figures.forEach(function(fig, i){
+    var btn = fig.querySelector(".thumb");
+    if (btn) btn.addEventListener("click", function(){ openLb(i, btn); });
+  });
+  function openLb(i, trigger){
+    lastFocused = trigger || document.activeElement;
+    showShot(i);
+    lightbox.classList.add("open");
+    lightbox.setAttribute("aria-hidden", "false");
+    document.getElementById("lbClose").focus();
+    document.addEventListener("keydown", onKey);
+  }
+  function closeLb(){
+    lightbox.classList.remove("open");
+    lightbox.setAttribute("aria-hidden", "true");
+    document.removeEventListener("keydown", onKey);
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+  function showShot(i){
+    var n = shots.length;
+    if (!n) return;
+    current = (i + n) % n;
+    var s = shots[current];
+    lbImg.src = s.src;
+    lbImg.alt = s.alt || s.title || "";
+    lbCap.textContent = "";
+    if (s.title){ var b = document.createElement("b"); b.textContent = s.title; lbCap.appendChild(b); }
+    if (s.description) lbCap.appendChild(document.createTextNode(s.description));
+  }
+  function onKey(e){
+    if (e.key === "Escape") closeLb();
+    else if (e.key === "ArrowRight") showShot(current + 1);
+    else if (e.key === "ArrowLeft") showShot(current - 1);
+  }
+  document.getElementById("lbClose").addEventListener("click", closeLb);
+  document.getElementById("lbNext").addEventListener("click", function(){ showShot(current + 1); });
+  document.getElementById("lbPrev").addEventListener("click", function(){ showShot(current - 1); });
+  lightbox.addEventListener("click", function(e){ if (e.target === lightbox) closeLb(); });
+
+  /* --- Gem filen: en ren kopi af albummet, som det var, da det blev lavet --- */
+  var dlBtn = document.getElementById("dlBtn");
+  if (dlBtn) dlBtn.addEventListener("click", function(){
+    var bar2 = document.getElementById("topbar");
+    if (bar2 && bar2.getAttribute("data-mode") !== "auto") bar2 = null;
+    var barWasShown = bar2 && bar2.classList.contains("show");
+    var wasDark = document.body.classList.contains("dark");
+    var fsWas = document.documentElement.style.getPropertyValue("--fs");
+    var topWasShown = toTop.classList.contains("show");
+    var lbWasOpen = lightbox.classList.contains("open");
+    var lbSrc = lbImg.getAttribute("src");
+    if (bar2) bar2.classList.remove("show");
+    document.body.classList.remove("dark");
+    document.getElementById("iconMoon").style.display = "block";
+    document.getElementById("iconSun").style.display = "none";
+    document.documentElement.style.removeProperty("--fs");
+    toTop.classList.remove("show");
+    lightbox.classList.remove("open");
+    lightbox.setAttribute("aria-hidden", "true");
+    lbImg.setAttribute("src", "");
+    lbCap.textContent = "";
+    var full = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+    if (bar2 && barWasShown) bar2.classList.add("show");
+    if (wasDark){
+      document.body.classList.add("dark");
+      document.getElementById("iconMoon").style.display = "none";
+      document.getElementById("iconSun").style.display = "block";
+    }
+    if (fsWas) document.documentElement.style.setProperty("--fs", fsWas);
+    if (topWasShown) toTop.classList.add("show");
+    if (lbWasOpen){ lbImg.setAttribute("src", lbSrc); showShot(current); lightbox.classList.add("open"); lightbox.setAttribute("aria-hidden", "false"); }
+    try {
+      var blob = new Blob([full], {type:"text/html"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = CFG.fileName || "album.html";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch(e){ alert("Filen kunne ikke gemmes her i browseren."); }
+  });
+
+  /* --- Hjem-knappen: i "automatisk" vises den kun, hvis filen er del af noget større --- */
+  var bar = document.getElementById("topbar");
+  if (bar){
+    var link = document.getElementById("homeBtn");
+    var mode = CFG.homeMode || "auto";
+    var target = CFG.homeUrl || "index.html";
+    function show(){ bar.classList.add("show"); }
+    var fromUrl = null;
+    try { var p = new URLSearchParams(location.search); fromUrl = p.get("hjem") || p.get("home"); } catch(e){}
+    if (fromUrl){ target = fromUrl; }
+    link.setAttribute("href", target);
+    if (mode === "always" || fromUrl){ show(); }
+    else if (mode === "auto"){
+      var path = (location.pathname || "").toLowerCase();
+      var isIndex = path.charAt(path.length-1) === "/" || path.indexOf("/index.html") === path.length - 11;
+      if (!isIndex){
+        var shown = false;
+        try {
+          if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); shown = true; }
+        } catch(e){}
+        if (!shown && navigator.standalone === true){ show(); shown = true; }
+        if (!shown){
+          try {
+            if (document.referrer){
+              var ref = new URL(document.referrer), here = new URL(location.href);
+              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));
+              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));
+              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }
+            }
+          } catch(e){}
+        }
+        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){
+          try { fetch(target, {method:"HEAD"}).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}
+        }
+      }
+    }
+  }
+})();
+</script>
+
+<script>
+/* ==========================================================================
+   Album · Bygger — version 3.0, efter Builder-standard 1.2 (september 2026)
+   Referenceimplementering: Sidebygger (sidebygger-hs.html, v1.3)
+   ========================================================================== */
+
+const BUILDER_VERSION = 3;          // tælles op ved formatændringer
+const FORMAT_NAME = 'billedalbum';
+const MAX_DIM = 1600;               // afsnit 8
+const JPEG_QUALITY = 0.82;          // afsnit 8
+const PREVIEW_MAX = 24;             // forhåndsvisningen viser højst så mange billeder
+
+const OUTPUT_CSS = document.getElementById('outputCss').textContent;
+const OUTPUT_JS = document.getElementById('outputJs').textContent;
+
+const state = {
+  theme:'original',
+  title:'', place:'', description:'', shareImage:'',
+  ctaText:'', ctaUrl:'',
+  homeMode:'auto', homeLabel:'', homeUrl:'',
+  visGem:true, visOmFil:true,
+  taellerBlock:''
+};
+
+// Hvert billede: {id, title, description, alt, src, pending, originalBytes, storedBytes, note, origName, takenTime}
+let images = [];
+let nextId = 1;
+
+/* ---------- Dublin Core ---------- */
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav', subject:'Emne', description:'Beskrivelse',
+  publisher:'Udgiver', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+// Udgivere / områder til dc.publisher og deres præfiks til dc.identifier.
+// Kopieret uændret fra Builder-standard 1.1, afsnit 4.1.
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+// Ældre navne, der rettes til det gældende navn, når en fil indlæses.
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+const AREA_PREFIX = {};
+PUBLISHERS.forEach(p => { AREA_PREFIX[p.name] = p.prefix; });
+
+(function fillPublisherSelect(){
+  const sel = document.getElementById('dcPublisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+function ensurePublisherOption(v){
+  const sel = document.getElementById('dcPublisher');
+  if (!v || Array.from(sel.options).some(o => o.value === v)) return;
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v + ' (ikke på listen — vælg en udgiver)';
+  sel.appendChild(o);
+}
+
+function dcInputId(key){ return 'dc' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+// Felter der spejler formularen ovenfor, indtil man selv skriver i dem.
+const dcTouched = { title:false, description:false, coverage:false, identifier:false };
+
+// Kopieret uændret fra Builder-standard 1.1, afsnit 3.
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Hjælpefunktioner ---------- */
+
+function hexToRgba(hex, a){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+
+function escapeHtml(str){
+  return String(str === undefined || str === null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// JSON der skal stå inde i et <script>-element i outputfilen.
+function safeJson(obj){
+  return JSON.stringify(obj).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+}
+
+function stripMdToPlain(md, maxLen){
+  let t = (md || '')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .replace(/^\s*-{3,}\s*$/gm, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen - 1).trim() + '…';
+  return t;
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+function fmtBytes(b){
+  if (!b) return '0 KB';
+  if (b < 1024 * 1024) return Math.max(1, Math.round(b / 1024)) + ' KB';
+  return (b / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+}
+
+function dataUrlBytes(dataUrl){
+  const i = (dataUrl || '').indexOf(',');
+  if (i < 0) return 0;
+  const b64 = dataUrl.slice(i + 1);
+  const pad = b64.slice(-2) === '==' ? 2 : (b64.slice(-1) === '=' ? 1 : 0);
+  return Math.floor(b64.length * 3 / 4) - pad;
+}
+
+function showMsg(text, kind){
+  const m = $('msgBox');
+  m.textContent = text;
+  m.className = 'msg ' + (kind || 'ok');
+}
+
+function downloadBlob(content, type, filename){
+  const blob = new Blob([content], {type:type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- Markdown (afsnit 6) ---------- */
+
+function inlineMd(s){
+  return s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+}
+
+// Teksten escapes først. Derfor er et citat-tegn ">" blevet til "&gt;", når linjen læses.
+function mdToHtml(md){
+  if (!md) return '';
+  const lines = escapeHtml(md).replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let para = [], quote = [], list = null;
+
+  function flushPara(){ if (para.length){ out.push('<p>' + inlineMd(para.join('<br>')) + '</p>'); para = []; } }
+  function flushQuote(){ if (quote.length){ out.push('<blockquote>' + inlineMd(quote.join('<br>')) + '</blockquote>'); quote = []; } }
+  function flushList(){
+    if (list){
+      out.push('<' + list.tag + '>' + list.items.map(li => '<li>' + inlineMd(li) + '</li>').join('') + '</' + list.tag + '>');
+      list = null;
+    }
+  }
+  function flushAll(){ flushPara(); flushQuote(); flushList(); }
+
+  lines.forEach(line => {
+    const t = line.trim();
+    if (t === ''){ flushAll(); return; }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)){ flushAll(); out.push('<hr>'); return; }
+    let m;
+    if ((m = t.match(/^(#{1,6})\s+(.+)$/))){
+      flushAll();
+      const level = m[1].length >= 3 ? 3 : 2;   // sidens titel er <h1>, så # og ## giver <h2>
+      out.push('<h' + level + '>' + inlineMd(m[2].trim()) + '</h' + level + '>');
+      return;
+    }
+    if ((m = t.match(/^&gt;\s?(.*)$/))){ flushPara(); flushList(); quote.push(m[1]); return; }
+    if ((m = t.match(/^[-*]\s+(.+)$/))){
+      flushPara(); flushQuote();
+      if (!list || list.tag !== 'ul'){ flushList(); list = {tag:'ul', items:[]}; }
+      list.items.push(m[1]); return;
+    }
+    if ((m = t.match(/^\d+\.\s+(.+)$/))){
+      flushPara(); flushQuote();
+      if (!list || list.tag !== 'ol'){ flushList(); list = {tag:'ol', items:[]}; }
+      list.items.push(m[1]); return;
+    }
+    flushQuote(); flushList();
+    para.push(t);
+  });
+  flushAll();
+  return out.join('\n');
+}
+
+/* ---------- Dublin Core: indsamling og automatik ---------- */
+
+function collectDublinCore(){
+  const dc = {};
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    const val = el ? el.value.trim() : '';
+    if (val) dc[key] = val;
+  });
+  // Udgiveren skal stå som første emneord, jf. Builder-standarden afsnit 4.1.
+  if (dc.publisher){
+    const parts = (dc.subject || '').split(';').map(x => {
+      const t = x.trim(), n = normalizePublisher(t);
+      return AREA_PREFIX[n] ? n : t;
+    }).filter(Boolean);
+    const rest = parts.filter(p => p !== dc.publisher);
+    dc.subject = [dc.publisher].concat(rest).join('; ');
+  }
+  return dc;
+}
+
+function syncAutoDc(){
+  if (!dcTouched.title) $('dcTitle').value = state.title.trim();
+  if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.description, 300);
+  if (!dcTouched.coverage) $('dcCoverage').value = state.place.trim();
+  if (!dcTouched.identifier){
+    const prefix = AREA_PREFIX[$('dcPublisher').value];
+    const name = slugify(state.title, '');
+    const year = new Date().getFullYear();
+    $('dcIdentifier').value = (prefix && name) ? (prefix + '-album-' + name + '-' + year) : '';
+  }
+}
+
+function buildDcMetaTags(dc){
+  const lines = [];
+  DC_FIELDS.forEach(key => {
+    if (!dc[key]) return;
+    if (key === 'subject'){
+      dc[key].split(';').forEach(part => {
+        const v = part.trim();
+        if (v) lines.push('<meta name="DC.subject" content="' + escapeHtml(v) + '">');
+      });
+    } else {
+      lines.push('<meta name="DC.' + key + '" content="' + escapeHtml(dc[key]) + '">');
+    }
+  });
+  return '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">' + (lines.length ? '\n' + lines.join('\n') : '');
+}
+
+// Panelet skrives som færdig HTML, så det kan læses, selv hvis JavaScript engang holder op med at virke.
+function buildDcSection(dc){
+  const rows = DC_FIELDS
+    .filter(key => dc[key])
+    .map(key => '<div class="meta-row"><dt>' + DC_LABELS[key] + ' <span class="dc-tag">dc.' + key + '</span></dt><dd>' + escapeHtml(dc[key]) + '</dd></div>');
+  if (!rows.length) return '';
+  return '<details class="meta narrow" id="omfilen">'
+    + '<summary><span>Om denne fil</span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+    + '<dl class="meta-list">' + rows.join('') + '</dl>'
+    + '</details>';
+}
+
+/* ---------- Det færdige album ---------- */
+
+function buildAlbumHTML(s, isPreview){
+  const t = THEMES[s.theme] || THEMES.original;
+  const dc = collectDublinCore();
+  const dcMeta = buildDcMetaTags(dc);
+  const dcBlock = (s.visOmFil === false) ? '' : buildDcSection(dc);
+  const pageLang = (dc.language || 'da').trim() || 'da';
+  const pageTitle = s.title.trim() || 'Fotoalbum';
+  const safeName = slugify(s.title, 'album');
+
+  const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
+  const homeLabel = (s.homeLabel && s.homeLabel.trim()) ? s.homeLabel.trim() : 'Hjem';
+  const homeUrl = (s.homeUrl && s.homeUrl.trim()) ? s.homeUrl.trim() : 'index.html';
+  const homeVisible = homeMode === 'always' || (isPreview && homeMode !== 'never');
+  const homeBlock = homeMode === 'never' ? '' :
+    '<div class="homewrap' + (homeVisible ? ' show' : '') + '" id="topbar" data-mode="' + homeMode + '">'
+    + '<a class="home-btn" id="homeBtn" href="' + escapeHtml(homeUrl) + '">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>'
+    + '<span>' + escapeHtml(homeLabel) + '</span></a></div>';
+
+  const ready = images.filter(x => !x.pending && x.src);
+  let shown = ready, trimmed = 0;
+  if (isPreview && ready.length > PREVIEW_MAX){
+    shown = ready.slice(0, PREVIEW_MAX);
+    trimmed = ready.length - PREVIEW_MAX;
+  }
+
+  const figures = shown.map((img, i) => {
+    const alt = img.alt || img.title || '';
+    const cap = (img.title || img.description)
+      ? '<figcaption>' + (img.title ? '<b>' + escapeHtml(img.title) + '</b>' : '')
+        + (img.description ? '<span>' + escapeHtml(img.description) + '</span>' : '') + '</figcaption>'
+      : '';
+    return '<figure class="shot">'
+      + '<button class="thumb" type="button" aria-label="Vis billedet i stort format' + (img.title ? ': ' + escapeHtml(img.title) : ' nummer ' + (i + 1)) + '">'
+      + '<img src="' + img.src + '" alt="' + escapeHtml(alt) + '" loading="lazy"></button>'
+      + cap + '</figure>';
+  }).join('\n');
+
+  const descHtml = mdToHtml(s.description);
+  const ctaBlock = (s.ctaText.trim() && s.ctaUrl.trim())
+    ? '<div class="cta-wrap narrow"><a class="cta-btn" href="' + escapeHtml(s.ctaUrl.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(s.ctaText.trim()) + '</a></div>'
+    : '';
+
+  const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap narrow"><button class="save-btn" id="dlBtn" type="button">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
+    + '<span>Gem filen</span></button></div>'
+    + '<p class="save-note narrow">Et billedalbum. Gemmer hele albummet som én fil på din egen computer - alle billeder og tekster følger med.</p>';
+
+  const footParts = [];
+  if (dc.creator) footParts.push(escapeHtml(dc.creator));
+  if (dc.publisher) footParts.push(escapeHtml(dc.publisher));
+  const year = (dc.date && dc.date.match(/\d{4}/)) ? dc.date.match(/\d{4}/)[0] : String(new Date().getFullYear());
+  const footBlock = footParts.length
+    ? '<footer class="site-foot"><p>' + footParts.join(' · ') + ' · ' + year + '</p></footer>\n'
+    : '';
+
+  // Afsnit 5.1: kildedata. Rå Markdown, ingen billeddata — billederne læses tilbage fra dokumentet.
+  const sourceData = {
+    format: FORMAT_NAME, builderVersion: BUILDER_VERSION,
+    theme: s.theme, title: s.title, place: s.place, description: s.description,
+    shareImage: s.shareImage,
+    cta: { text: s.ctaText, url: s.ctaUrl },
+    images: ready.map(img => ({ title: img.title || '', description: img.description || '', alt: img.alt || '', takenTime: img.takenTime || null })),
+    homeMode: homeMode, homeLabel: s.homeLabel, homeUrl: s.homeUrl,
+    visGem: s.visGem !== false, visOmFil: s.visOmFil !== false,
+    dublinCore: dc
+  };
+
+  const share = s.shareImage.trim();
+  const ogDesc = stripMdToPlain(s.description, 200);
+  const taellerBlock = (s.taellerBlock && !isPreview) ? '\n' + s.taellerBlock + '\n' : '';
+  const cfg = { homeMode: homeMode, homeUrl: homeUrl, fileName: safeName + '.html' };
+
+  return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
++ '<meta charset="UTF-8">\n'
++ '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
++ '<title>' + escapeHtml(pageTitle) + '</title>\n'
++ '<meta property="og:type" content="article">\n'
++ '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
++ (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
++ (share ? '<meta property="og:image" content="' + escapeHtml(share) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
++ dcMeta + '\n'
++ (ready.length ? '<link rel="icon" href="' + ready[0].src + '">\n' : '')
++ '<script type="application/json" id="builder-source-data">' + safeJson(sourceData) + '<\/script>\n'
++ '<style>\n'
++ ':root{\n'
++ '  --accent:' + t.accent + '; --accent-dark:' + t.accentDark + '; --on-accent:' + t.onAccent + ';\n'
++ '  --paper:' + t.paper + '; --surface:' + t.surface + '; --ink:' + t.ink + '; --body:' + t.body + ';\n'
++ '  --muted:' + t.muted + '; --line:' + t.line + '; --quote:' + t.quote + ';\n'
++ '  --code-bg:' + hexToRgba(t.accent, 0.08) + ';\n'
++ '  --shadow:rgba(30,25,15,0.10);\n'
++ '  --sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;\n'
++ '  --fs:1;\n'
++ '}\n'
++ 'body.dark{\n'
++ '  --paper:' + t.dPaper + '; --surface:' + t.dSurface + '; --ink:' + t.dInk + '; --body:' + t.dBody + ';\n'
++ '  --muted:' + t.dMuted + '; --line:' + t.dLine + '; --quote:' + t.dQuote + ';\n'
++ '  --code-bg:' + hexToRgba(t.accent, 0.22) + ';\n'
++ '  --shadow:rgba(0,0,0,0.45);\n'
++ '}\n'
++ OUTPUT_CSS
++ '</style>\n</head>\n<body>\n'
++ '<header class="site-head">\n<div class="head-inner">\n'
++ homeBlock
++ '<div class="head-tools">'
++ '<button class="tool small" id="fontDec" type="button" aria-label="Mindre skrift">-A</button>'
++ '<button class="tool" id="fontInc" type="button" aria-label="Større skrift">+A</button>'
++ '<button class="tool" id="darkBtn" type="button" aria-label="Skift mellem lys og mørk baggrund"><svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 15.4A8.6 8.6 0 0 1 8.6 3.6a8.6 8.6 0 1 0 11.8 11.8z"/></svg>'
++ '<svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>'
++ '</div>\n</div>\n</header>\n'
++ '<main id="top">\n'
++ '<div class="narrow">'
++ '<h1>' + escapeHtml(pageTitle) + '</h1>'
++ (s.place.trim() ? '<p class="location">' + escapeHtml(s.place.trim()) + '</p>' : '')
++ (descHtml ? '<div class="intro">\n' + descHtml + '\n</div>' : '')
++ (trimmed ? '<p class="preview-note">Forhåndsvisningen viser de første ' + PREVIEW_MAX + ' billeder. Alle ' + ready.length + ' kommer med i den færdige fil.</p>' : '')
++ '</div>\n'
++ '<div class="grid">\n' + figures + '\n</div>\n'
++ ctaBlock + saveBlock + dcBlock
++ '\n</main>\n' + footBlock
++ '<button id="toTop" type="button" aria-label="Til toppen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>\n'
++ '<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Billedvisning">'
++ '<button class="lb-btn lb-close" id="lbClose" type="button" aria-label="Luk">&#10005;</button>'
++ '<button class="lb-btn lb-prev" id="lbPrev" type="button" aria-label="Forrige billede">&#8249;</button>'
++ '<figure><img id="lbImg" src="" alt=""><figcaption id="lbCap"></figcaption></figure>'
++ '<button class="lb-btn lb-next" id="lbNext" type="button" aria-label="Næste billede">&#8250;</button>'
++ '</div>\n'
++ '<script>\nwindow.ALBUM_CFG = ' + safeJson(cfg) + ';\n' + OUTPUT_JS + '\n<\/script>\n'
++ taellerBlock
++ '</body>\n</html>';
+}
+
+/* ---------- Forhåndsvisning, størrelse og knapper ---------- */
+
+function pendingCount(){ return images.filter(x => x.pending).length; }
+
+function totalBytes(){
+  let n = 0;
+  images.forEach(x => { if (x.src) n += x.src.length; });
+  const first = images.find(x => x.src);
+  if (first) n += first.src.length;   // det første billede står også som ikon i <head>
+  return n;
+}
+
+function updateSizeBar(){
+  const bytes = totalBytes();
+  const mb = bytes / (1024*1024);
+  const bar = $('sizeBar');
+  bar.className = 'sizebar' + (mb > 50 ? ' over' : (mb > 25 ? ' warn' : ''));
+  bar.textContent = 'Indhold i filen: ' + fmtBytes(bytes)
+    + (mb > 50 ? ' — filen er ved at være meget stor. Overvej at dele albummet i to.'
+      : (mb > 25 ? ' — filen begynder at blive stor til at sende som vedhæftning.' : ''));
+}
+
+function readForm(){
+  state.title = $('albumTitle').value;
+  state.place = $('albumPlace').value;
+  state.description = $('albumDesc').value;
+  state.shareImage = $('shareImage').value;
+  state.ctaText = $('ctaText').value;
+  state.ctaUrl = $('ctaUrl').value;
+  state.homeMode = $('homeMode').value;
+  state.homeLabel = $('homeLabel').value;
+  state.homeUrl = $('homeUrl').value;
+  state.visGem = $('visGem').checked;
+  state.visOmFil = $('visOmFil').checked;
+}
+
+function checkReady(){
+  $('generateBtn').disabled = !(images.length > 0 && pendingCount() === 0);
+}
+
+// Formularen og Dublin Core opdateres ved hvert tastetryk. Selve rammen tegnes en
+// brøkdel af et sekund senere, så et album med mange billeder ikke gør skrivningen tung.
+let frameTimer = null;
+function renderPreview(){
+  readForm();
+  syncAutoDc();
+  updateSizeBar();
+  checkReady();
+  if (frameTimer) clearTimeout(frameTimer);
+  frameTimer = setTimeout(() => {
+    try { $('previewFrame').srcdoc = buildAlbumHTML(state, true); } catch(err){ /* næste tastetryk prøver igen */ }
+  }, 200);
+}
+
+['albumTitle','albumPlace','albumDesc','shareImage','ctaText','ctaUrl',
+ 'homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', renderPreview);
+  if (el.tagName === 'SELECT' || el.type === 'checkbox') el.addEventListener('change', renderPreview);
+});
+
+DC_FIELDS.forEach(key => {
+  const el = $(dcInputId(key));
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+    renderPreview();
+  });
+  if (el.tagName === 'SELECT') el.addEventListener('change', () => { syncAutoDc(); renderPreview(); });
+});
+
+document.querySelectorAll('#themePicker input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', () => { selectTheme(radio.value); renderPreview(); });
+});
+
+function selectTheme(themeKey){
+  state.theme = THEMES[themeKey] ? themeKey : 'original';
+  document.querySelectorAll('#themePicker input[name="theme"]').forEach(r => { r.checked = (r.value === state.theme); });
+  document.querySelectorAll('#themePicker .theme-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.theme === state.theme);
+  });
+}
+
+/* ---------- Billedbehandling (afsnit 8: 1600 px, JPEG 0,82) ---------- */
+
+function loadBitmap(file, cb){
+  function fallback(){
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { cb(img); URL.revokeObjectURL(url); };
+    img.onerror = () => { cb(null); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+  if (window.createImageBitmap){
+    try {
+      createImageBitmap(file, {imageOrientation:'from-image'}).then(bmp => cb(bmp)).catch(fallback);
+      return;
+    } catch(e){ /* falder igennem */ }
+  }
+  fallback();
+}
+
+function processImageFile(file){
+  return new Promise((resolve, reject) => {
+    loadBitmap(file, bmp => {
+      if (!bmp) return reject(new Error('kunne ikke læses'));
+      const w = bmp.width, h = bmp.height;
+      const scale = Math.min(1, MAX_DIM / Math.max(w, h));
+      const tw = Math.max(1, Math.round(w * scale));
+      const th = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = tw; canvas.height = th;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, tw, th);
+      ctx.drawImage(bmp, 0, 0, tw, th);
+      if (bmp.close) bmp.close();
+      try {
+        resolve({ data: canvas.toDataURL('image/jpeg', JPEG_QUALITY),
+                  note: scale < 1 ? ('skaleret til ' + tw + '×' + th) : 'komprimeret' });
+      } catch(e){ reject(new Error('kunne ikke behandles')); }
+    });
+  });
+}
+
+$('btnAddImages').addEventListener('click', () => $('fileInput').click());
+
+$('fileInput').addEventListener('change', async (e) => {
+  const allFiles = Array.from(e.target.files);
+  e.target.value = '';
+  if (!allFiles.length) return;
+
+  const files = allFiles.filter(f => f.type && f.type.indexOf('image/') === 0);
+  const jsonFiles = allFiles.filter(f => /\.json$/i.test(f.name));
+  const txtFiles = allFiles.filter(f => /\.txt$/i.test(f.name));
+
+  // Pladserne oprettes med det samme, så rækkefølgen følger det valgte.
+  const slots = files.map(file => {
+    const entry = { id: nextId++, title: file.name.replace(/\.[^.]+$/, ''), description:'', alt:'',
+      src:'', pending:true, originalBytes:file.size, storedBytes:0, note:'', origName:file.name, takenTime:null };
+    images.push(entry);
+    return entry;
+  });
+  render();
+
+  if (jsonFiles.length) applyTakeoutMetadata(jsonFiles, slots);
+  if (txtFiles.length) applyFotosafariMetadata(txtFiles, slots);
+
+  // Ét billede ad gangen, så computeren ikke går i stå ved mange store billeder.
+  let failed = 0;
+  for (let i = 0; i < files.length; i++){
+    const entry = slots[i];
+    try {
+      const res = await processImageFile(files[i]);
+      entry.src = res.data;
+      entry.note = res.note;
+      entry.storedBytes = dataUrlBytes(res.data);
+      entry.pending = false;
+    } catch(err){
+      images = images.filter(x => x.id !== entry.id);
+      failed++;
+    }
+    render();
+  }
+  if (failed) showMsg(failed + (failed === 1 ? ' fil' : ' filer') + ' kunne ikke læses som billede og blev sprunget over.', 'err');
+});
+
+/* ---------- Google Takeout-metadata ---------- */
+
+// Fjerner de endelser, Google Takeout sætter på sidecar-filerne, så det oprindelige billednavn står tilbage.
+function stripSidecarSuffix(name){
+  const suffixes = ['.supplemental-metadata.json', '.suppl.json', '.json'];
+  const lower = name.toLowerCase();
+  for (const suf of suffixes){
+    if (lower.slice(-suf.length) === suf) return name.slice(0, name.length - suf.length);
+  }
+  return null;
+}
+
+function readJsonFile(file){
+  return file.text()
+    .then(txt => { try { return { name:file.name, data:JSON.parse(txt) }; } catch(e){ return { name:file.name, data:null }; } })
+    .catch(() => ({ name:file.name, data:null }));
+}
+
+// En sidecar pr. billede har photoTakenTime/imageViews. Albummets egen metadata.json
+// har det ikke, men har en titel og evt. en enrichments-tekst (albumbeskrivelsen).
+function applyTakeoutMetadata(jsonFiles, slots){
+  Promise.all(jsonFiles.map(readJsonFile)).then(results => {
+    const sidecars = {};
+    let albumMeta = null;
+
+    results.forEach(r => {
+      if (!r.data) return;
+      const d = r.data;
+      if (d.hasOwnProperty('photoTakenTime') || d.hasOwnProperty('imageViews')){
+        const baseName = stripSidecarSuffix(r.name);
+        if (!baseName) return;
+        const takenTime = (d.photoTakenTime && d.photoTakenTime.timestamp) ? parseInt(d.photoTakenTime.timestamp, 10) * 1000 : null;
+        sidecars[baseName.toLowerCase()] = { description:(d.description || '').trim(), takenTime:takenTime };
+      } else if (d.title){
+        let desc = '';
+        (d.enrichments || []).some(en => {
+          if (en.narrativeEnrichment && en.narrativeEnrichment.text){ desc = en.narrativeEnrichment.text; return true; }
+          return false;
+        });
+        albumMeta = { title:d.title, description:desc };
+      }
+    });
+
+    let matched = 0;
+    slots.forEach(entry => {
+      const sc = entry.origName ? sidecars[entry.origName.toLowerCase()] : null;
+      if (sc){
+        matched++;
+        if (sc.description && !entry.description) entry.description = sc.description;
+        if (sc.takenTime) entry.takenTime = sc.takenTime;
+      }
+    });
+
+    if (albumMeta){
+      if (!$('albumTitle').value.trim()) $('albumTitle').value = albumMeta.title;
+      if (albumMeta.description && !$('albumDesc').value.trim()) $('albumDesc').value = albumMeta.description;
+    }
+
+    const parts = [];
+    if (matched) parts.push(matched + (matched === 1 ? ' billedbeskrivelse' : ' billedbeskrivelser') + ' hentet fra Google Takeout');
+    if (albumMeta) parts.push('albumoplysninger fundet i metadata.json');
+    if (parts.length) showMsg(parts.join(' · ') + '.', 'ok');
+    else showMsg('Der var ingen genkendelige Google Takeout-oplysninger i de valgte .json-filer.', 'err');
+
+    render();
+  });
+}
+
+/* ---------- Fotosafari-metadata (.txt-filer) ---------- */
+
+// Fotosafari lægger en tekstfil ved siden af hvert billede. Den hedder det samme
+// som billedet bortset fra endelsen, og linjerne står i fast rækkefølge:
+// fotograf, beskrivelse, breddegrad, længdegrad, gruppe og eventuelt en kode.
+// Albummet bruger fotograf og beskrivelse.
+function stripExtension(name){
+  return String(name || '').replace(/\.[^.\/\\]+$/, '');
+}
+
+function readTextFile(file){
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = ev => resolve({ name:file.name, text:String(ev.target.result || '') });
+    reader.onerror = () => resolve({ name:file.name, text:'' });
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function parseFotosafariText(text){
+  const lines = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+  return {
+    photographer: (lines[0] || '').trim(),
+    description:  (lines[1] || '').trim(),
+    lat:          (lines[2] || '').trim(),
+    lon:          (lines[3] || '').trim(),
+    group:        (lines[4] || '').trim()
+  };
+}
+
+function applyFotosafariMetadata(txtFiles, slots){
+  Promise.all(txtFiles.map(readTextFile)).then(results => {
+    const sidecars = {};
+    results.forEach(r => {
+      if (r.text) sidecars[stripExtension(r.name).toLowerCase()] = parseFotosafariText(r.text);
+    });
+
+    let matched = 0;
+    const photographers = [];
+    slots.forEach(entry => {
+      const key = entry.origName ? stripExtension(entry.origName).toLowerCase() : '';
+      const sc = key ? sidecars[key] : null;
+      if (!sc) return;
+      matched++;
+      if (sc.description && !entry.description) entry.description = sc.description;
+      if (sc.photographer && photographers.indexOf(sc.photographer) === -1) photographers.push(sc.photographer);
+    });
+
+    // Fotograferne sættes ind i dc.creator, men kun hvis feltet er tomt.
+    if (photographers.length && !$('dcCreator').value.trim()){
+      $('dcCreator').value = photographers.join('; ');
+    }
+
+    if (matched) showMsg(matched + (matched === 1 ? ' billedbeskrivelse' : ' billedbeskrivelser') + ' hentet fra Fotosafaris tekstfiler'
+      + (photographers.length ? ' · fotograf: ' + photographers.join(', ') : '') + '.', 'ok');
+    else showMsg('Ingen af tekstfilerne passede til navnet på et af billederne.', 'err');
+
+    render();
+  });
+}
+
+$('btnSortDate').addEventListener('click', () => {
+  images = images.map((x, i) => ({ entry:x, i:i }))
+    .sort((a, b) => {
+      const ta = a.entry.takenTime, tb = b.entry.takenTime;
+      if (ta && tb) return ta - tb;
+      if (ta && !tb) return -1;
+      if (!ta && tb) return 1;
+      return a.i - b.i;
+    })
+    .map(x => x.entry);
+  render();
+  showMsg('Billederne er sorteret efter optagelsesdato.', 'ok');
+});
+
+/* ---------- Billedkortene i formularen ---------- */
+
+function makeField(labelText, el, id){
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+  const lab = document.createElement('label');
+  lab.textContent = labelText;
+  lab.htmlFor = id;
+  el.id = id;
+  wrap.appendChild(lab);
+  wrap.appendChild(el);
+  return wrap;
+}
+
+function render(){
+  const grid = $('grid');
+  grid.innerHTML = '';
+  const waiting = pendingCount();
+  $('countPill').textContent = images.length + (images.length === 1 ? ' billede' : ' billeder')
+    + (waiting ? ' · behandler ' + waiting + ' …' : '');
+  $('emptyNote').style.display = images.length ? 'none' : 'block';
+  $('btnSortDate').style.display = images.some(x => x.takenTime) ? 'inline-block' : 'none';
+
+  images.forEach((img, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    if (img.pending){
+      const ph = document.createElement('div');
+      ph.className = 'placeholder';
+      ph.textContent = 'Behandler billede …';
+      card.appendChild(ph);
+    } else {
+      const pic = document.createElement('img');
+      pic.src = img.src;
+      pic.alt = '';
+      card.appendChild(pic);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'body';
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.value = img.title;
+    titleInput.addEventListener('input', () => { img.title = titleInput.value; renderPreview(); });
+    body.appendChild(makeField('Titel', titleInput, 'imgTitle' + img.id));
+
+    const descInput = document.createElement('textarea');
+    descInput.value = img.description;
+    descInput.addEventListener('input', () => { img.description = descInput.value; renderPreview(); });
+    body.appendChild(makeField('Beskrivelse', descInput, 'imgDesc' + img.id));
+
+    const altInput = document.createElement('input');
+    altInput.type = 'text';
+    altInput.value = img.alt || '';
+    altInput.placeholder = 'Til skærmlæsere — tom = titlen bruges';
+    altInput.addEventListener('input', () => { img.alt = altInput.value; renderPreview(); });
+    body.appendChild(makeField('Alt-tekst', altInput, 'imgAlt' + img.id));
+
+    if (!img.pending && img.storedBytes){
+      const info = document.createElement('div');
+      info.className = 'sizeinfo';
+      info.textContent = (img.originalBytes ? fmtBytes(img.originalBytes) + ' → ' : '')
+        + '~' + fmtBytes(img.storedBytes) + (img.note ? ' (' + img.note + ')' : '');
+      body.appendChild(info);
+    }
+    if (img.takenTime){
+      const d = document.createElement('div');
+      d.className = 'sizeinfo';
+      d.textContent = 'Optaget: ' + new Date(img.takenTime).toLocaleDateString('da-DK');
+      body.appendChild(d);
+    }
+
+    const rowBtns = document.createElement('div');
+    rowBtns.className = 'row-btns';
+    const moveBtns = document.createElement('div');
+    moveBtns.className = 'move-btns';
+
+    const up = document.createElement('button');
+    up.type = 'button'; up.className = 'btn secondary icon'; up.textContent = '↑';
+    up.setAttribute('aria-label', 'Flyt billedet en plads frem');
+    up.disabled = (i === 0);
+    up.addEventListener('click', () => moveImage(i, -1));
+    const down = document.createElement('button');
+    down.type = 'button'; down.className = 'btn secondary icon'; down.textContent = '↓';
+    down.setAttribute('aria-label', 'Flyt billedet en plads tilbage');
+    down.disabled = (i === images.length - 1);
+    down.addEventListener('click', () => moveImage(i, 1));
+    moveBtns.appendChild(up); moveBtns.appendChild(down);
+
+    const remove = document.createElement('button');
+    remove.type = 'button'; remove.className = 'btn danger'; remove.textContent = 'Fjern';
+    remove.addEventListener('click', () => { images = images.filter(x => x.id !== img.id); render(); });
+
+    rowBtns.appendChild(moveBtns); rowBtns.appendChild(remove);
+    body.appendChild(rowBtns);
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+
+  renderPreview();
+}
+
+function moveImage(index, dir){
+  const j = index + dir;
+  if (j < 0 || j >= images.length) return;
+  const tmp = images[index]; images[index] = images[j]; images[j] = tmp;
+  render();
+}
+
+/* ---------- Indlæs eksisterende album (afsnit 7) ---------- */
+
+function setField(id, value){ const el = $(id); if (el) el.value = value || ''; }
+
+function extractTaellerBlock(text){
+  const startMark = text.indexOf('TÆLLER');
+  if (startMark === -1) return '';
+  const endMark = text.indexOf('TÆLLER SLUT');
+  if (endMark === -1) return '';
+  const start = text.lastIndexOf('<!--', startMark);
+  const end = text.indexOf('-->', endMark);
+  if (start === -1 || end === -1 || end < start) return '';
+  return text.slice(start, end + 3);
+}
+
+// Tankestreg bliver til bindestreg, og gamle navne rettes til det gældende.
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+let publisherFixed = '';
+
+function fillDcFields(dc){
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    if (!el) return;
+    let v = (dc && dc[key]) ? dc[key] : '';
+    if (key === 'publisher'){
+      const orig = v;
+      v = normalizePublisher(v);
+      if (orig && orig !== v) publisherFixed = orig + '" er rettet til "' + v;
+      ensurePublisherOption(v);
+    }
+    if (!v){
+      if (key === 'format') v = 'text/html';
+      else if (key === 'language') v = 'da';
+      else if (key === 'type') v = 'Image';
+    }
+    el.value = v;
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+  });
+}
+
+$('loadPage').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('loadStatus').textContent = 'Læser fil …';
+  $('loadStatus').className = 'status pending';
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const dataScript = doc.getElementById('builder-source-data');
+    if (!dataScript){
+      $('loadStatus').textContent = 'Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.';
+      e.target.value = '';
+      return;
+    }
+    const data = JSON.parse(dataScript.textContent);
+    if (data.format !== FORMAT_NAME){
+      $('loadStatus').textContent = 'Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.';
+      e.target.value = '';
+      return;
+    }
+    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION){
+      $('loadStatus').textContent = 'Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.';
+      e.target.value = '';
+      return;
+    }
+
+    setField('albumTitle', data.title);
+    setField('albumPlace', data.place);
+    setField('albumDesc', data.description);
+    setField('shareImage', data.shareImage);
+    setField('ctaText', data.cta && data.cta.text);
+    setField('ctaUrl', data.cta && data.cta.url);
+    $('homeMode').value = (data.homeMode === 'always' || data.homeMode === 'never') ? data.homeMode : 'auto';
+    setField('homeLabel', data.homeLabel);
+    setField('homeUrl', data.homeUrl);
+    $('visGem').checked = data.visGem !== false;
+    $('visOmFil').checked = data.visOmFil !== false;
+    selectTheme(data.theme || 'original');
+    publisherFixed = '';
+    fillDcFields(data.dublinCore || {});
+
+    // Teksterne kommer fra kildedata, selve billederne fra dokumentet.
+    const srcs = Array.from(doc.querySelectorAll('figure.shot img')).map(im => im.getAttribute('src') || '');
+    const texts = data.images || [];
+    images = [];
+    srcs.forEach((src, i) => {
+      if (src.indexOf('data:') !== 0) return;
+      const txt = texts[i] || {};
+      images.push({ id: nextId++, title: txt.title || '', description: txt.description || '', alt: txt.alt || '',
+        src: src, pending:false, originalBytes:0, storedBytes: dataUrlBytes(src), note:'indlæst fra fil',
+        origName:'', takenTime: txt.takenTime || null });
+    });
+
+    state.taellerBlock = extractTaellerBlock(text);
+    $('loadStatus').textContent = 'Indlæst: ' + file.name + ' · ' + images.length + (images.length === 1 ? ' billede' : ' billeder')
+      + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
+      + (publisherFixed ? ' · udgiveren "' + publisherFixed + '"' : '');
+    $('loadStatus').className = 'status';
+    render();
+  } catch(err){
+    $('loadStatus').textContent = 'Fejl ved indlæsning: ' + err.message;
+    $('loadStatus').className = 'status pending';
+  }
+});
+
+/* ---------- Gem ---------- */
+
+$('metaJsonBtn').addEventListener('click', () => {
+  readForm();
+  syncAutoDc();
+  const dc = collectDublinCore();
+  if (Object.keys(dc).length === 0){
+    showMsg('Der er ingen Dublin Core-felter udfyldt endnu.', 'err');
+    return;
+  }
+  const payload = {'@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString()};
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json', slugify(state.title, 'album') + '-metadata.json');
+  showMsg('Metadatafilen er downloadet.', 'ok');
+});
+
+$('generateBtn').addEventListener('click', () => {
+  try {
+    readForm();
+    syncAutoDc();
+    if (!images.length){ showMsg('Tilføj mindst ét billede, før du genererer albummet.', 'err'); return; }
+    if (pendingCount()){ showMsg('Vent, til alle billeder er færdigbehandlet.', 'err'); return; }
+    const html = buildAlbumHTML(state, false);
+    const name = slugify(state.title, 'album') + '.html';
+    downloadBlob(html, 'text/html', name);
+    showMsg('Albummet er genereret og downloadet som ' + name + ' (' + fmtBytes(html.length) + '). Det kan åbnes direkte i browseren uden internet.'
+      + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig nederst i filen.' : ''), 'ok');
+  } catch(err){
+    showMsg('Der gik noget galt: ' + err.message, 'err');
+  }
+});
+
+selectTheme('original');
+render();
+</script>
+</body>
+</html>
