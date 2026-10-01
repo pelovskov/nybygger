@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Henvisning · Bygger</title>
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } .preview-pane{ position:static; min-height:0; } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .field .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none; letter-spacing:0; font-size:14.5px; line-height:1.45; }
+  .field label.check{ text-transform:none; letter-spacing:0; font-weight:400; color:var(--ink); font-size:14.5px; margin-bottom:0; }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--rust); cursor:pointer; }
+  .check span strong{ font-weight:650; }
+  .field .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  input[type=text], input[type=url], textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:120px; resize:vertical; line-height:1.6; }
+  input[type=text]:focus, input[type=url]:focus, textarea:focus, select:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  button:focus-visible, summary:focus-visible, .theme-option:focus-within, .radiolist label:focus-within{ outline:2px solid var(--rust); outline-offset:2px; }
+  select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  .filebox{ border:1px dashed var(--line); border-radius:3px; padding:14px; background:#f7f3e7; font-size:14.5px; }
+  .filebox input{ font-size:14px; }
+  .filebox .status{ margin-top:9px; font-size:13.5px; color:var(--moss); font-weight:600; }
+  .filebox .status.pending{ color:#7A6522; }
+  .urlstatus{ margin-top:8px; font-size:13.5px; line-height:1.5; }
+  .urlstatus.ok{ color:var(--moss); font-weight:600; }
+  .urlstatus.warn{ color:#7d2c1a; font-weight:600; }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+
+  .theme-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+  .theme-option{
+    flex:1; min-width:132px; position:relative; border:2px solid var(--line); border-radius:8px;
+    padding:12px 12px 11px; cursor:pointer; background:#fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .field label.theme-option{ text-transform:none; letter-spacing:0; margin-bottom:0; }
+  .theme-option:hover{ border-color:#a89f89; }
+  .theme-option input{ position:absolute; top:11px; right:11px; width:19px; height:19px; margin:0; accent-color:var(--rust); cursor:pointer; }
+  .theme-option .swatches{ display:flex; gap:6px; margin-bottom:10px; }
+  .theme-option .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+  .theme-option .tname{ font-size:14.5px; font-weight:600; color:var(--ink); padding-right:22px; }
+  .theme-option.selected{ border-color:var(--theme-accent, var(--rust)); box-shadow: 0 0 0 2px var(--theme-accent, var(--rust)) inset, 0 2px 8px rgba(30,25,15,0.08); }
+
+  .radiolist{ display:flex; flex-direction:column; gap:8px; }
+  .field .radiolist label{
+    display:flex; gap:10px; align-items:flex-start; font-size:15px; padding:10px 12px; margin:0;
+    text-transform:none; letter-spacing:0; font-weight:400; color:var(--ink);
+    border:2px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; min-height:44px;
+  }
+  .field .radiolist label.on{ border-color:var(--rust); }
+  .radiolist input{ margin-top:3px; accent-color:var(--rust); width:18px; height:18px; flex:0 0 18px; }
+  .radiolist .sub{ display:block; font-size:13.5px; color:var(--hint); margin-top:2px; line-height:1.5; }
+
+  .generate-btn{
+    width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px;
+  }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4436; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.warn{ display:block; background:#f7efd9; color:#5e4f17; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+
+  details.dc{ border:1px solid var(--line); border-radius:4px; background:#f7f3e7; padding:14px 16px; margin-bottom:20px; }
+  details.dc summary{ cursor:pointer; font-size:14px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; padding:2px 0; min-height:28px; }
+  details.dc summary::marker{ color:var(--rust); }
+  details.dc[open] summary{ margin-bottom:12px; }
+  details.dc .panel-sub{ font-size:13.5px; color:var(--hint); margin:0 0 16px; line-height:1.55; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 16px; }
+  .field-grid .field{ margin-bottom:16px; }
+  .field-grid label{ text-transform:none; letter-spacing:0; font-size:14px; }
+  .field-grid label .hint{ display:block; font-size:13px; color:var(--hint); font-weight:400; margin-top:3px; line-height:1.5; }
+  .meta-btn{
+    width:100%; padding:12px; min-height:44px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px;
+  }
+  .meta-btn:hover:not(:disabled){ background:#f2ecdd; }
+  .meta-btn:disabled{ color:#8a8471; cursor:not-allowed; }
+  .meta-btn.inline{ width:auto; padding:10px 16px; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:14px; font-weight:600; }
+  .phone-frame{ background:#fbf8ef; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 8px 24px rgba(30,25,15,0.10); }
+  #previewFrame{ width:100%; height:660px; border:none; border-radius:6px; background:#fbf8ef; }
+  .preview-pane .note{ font-size:13.5px; color:var(--hint); margin:12px 0 0; line-height:1.55; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Henvisning · Bygger</h1>
+  <span>Lav et lille skilt, der sender videre til en side på nettet · kører lokalt, ingen server · version 2.0</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <div class="field">
+      <label for="loadPage">Indlæs eksisterende henvisning (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="loadPage" accept=".html,text/html">
+        <div class="status" id="loadStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg en henvisning (.html), som er lavet med denne udgave af værktøjet, for at rette i den. Henvisninger fra den første udgave og håndlavede skabelonfiler kan ikke indlæses. De laves om her – det tager kun et øjeblik.</div>
+    </div>
+
+    <div class="field">
+      <label>Tema</label>
+      <div class="theme-picker" id="themePicker">
+        <label class="theme-option" data-theme="original" style="--theme-accent:#9A4630">
+          <input type="radio" name="theme" value="original" checked>
+          <div class="swatches"><span class="swatch" style="background:#9A4630"></span><span class="swatch" style="background:#EDE7D8"></span></div>
+          <div class="tname">Oprindeligt</div>
+        </label>
+        <label class="theme-option" data-theme="historisk" style="--theme-accent:#385261">
+          <input type="radio" name="theme" value="historisk">
+          <div class="swatches"><span class="swatch" style="background:#385261"></span><span class="swatch" style="background:#6B7A5A"></span><span class="swatch" style="background:#F2F5F6"></span></div>
+          <div class="tname">Historisk Samfund</div>
+        </label>
+        <label class="theme-option" data-theme="lokalhistorisk2" style="--theme-accent:#9E2453">
+          <input type="radio" name="theme" value="lokalhistorisk2">
+          <div class="swatches"><span class="swatch" style="background:#9E2453"></span><span class="swatch" style="background:#FAF9F5"></span></div>
+          <div class="tname">Lokalhistorisk</div>
+        </label>
+        <label class="theme-option" data-theme="roedekors" style="--theme-accent:#E30A0B">
+          <input type="radio" name="theme" value="roedekors">
+          <div class="swatches"><span class="swatch" style="background:#E30A0B"></span><span class="swatch" style="background:#FFFFFF"></span></div>
+          <div class="tname">Røde Kors</div>
+        </label>
+        <label class="theme-option" data-theme="roskildetv" style="--theme-accent:#B03035">
+          <input type="radio" name="theme" value="roskildetv">
+          <div class="swatches"><span class="swatch" style="background:#B03035"></span><span class="swatch" style="background:conic-gradient(#4DB0E8 0% 17%, #3576BA 17% 33%, #8E2D62 33% 50%, #B03035 50% 67%, #E8803A 67% 83%, #EFAF45 83% 100%)"></span></div>
+          <div class="tname">Roskilde TV</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sectionhead">Henvisningen</div>
+
+    <div class="field">
+      <label for="url">Adressen der henvises til</label>
+      <input type="url" id="url" placeholder="https://…">
+      <div class="hint">Kopiér adressen fra browserens adresselinje. Den skal begynde med <code>https://</code> eller <code>http://</code>. Udfylder automatisk <code>dc.relation</code>.</div>
+      <div class="urlstatus" id="urlStatus" aria-live="polite"></div>
+      <button type="button" class="meta-btn inline" id="tryBtn" disabled>Prøv adressen i et nyt vindue</button>
+    </div>
+
+    <div class="field">
+      <label for="title">Titel</label>
+      <input type="text" id="title" placeholder="fx Historisk Samfund for Roskilde Amt">
+      <div class="hint">Det navn henvisningen står med i søgesiden og på skiltet. Bruges også til filnavnet.</div>
+    </div>
+
+    <div class="field">
+      <label for="desc">Beskrivelse</label>
+      <textarea id="desc" placeholder="Hvad finder man på siden? To-tre sætninger er nok."></textarea>
+      <div class="hint">Vises på skiltet og i søgesiden. Udfylder automatisk <code>dc.description</code>. Du kan bruge <code>**fed**</code>, <code>*kursiv*</code>, <code>-</code> for punktliste, <code>&gt;</code> for citat og <code>[tekst](https://…)</code> for et link.</div>
+    </div>
+
+    <div class="field">
+      <label for="location">Sted (valgfri)</label>
+      <input type="text" id="location" placeholder="fx Roskilde, Danmark">
+      <div class="hint">Udfylder automatisk <code>dc.coverage</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="shareImage">Webadresse til delingsbillede (valgfri)</label>
+      <input type="text" id="shareImage" placeholder="https://…/billede.jpg">
+      <div class="hint">Skal henvisningen deles på fx Facebook, kan du skrive adressen på et billede, der ligger på nettet. Ellers lad feltet stå tomt.</div>
+    </div>
+
+    <div class="field">
+      <label>Når nogen åbner filen direkte</label>
+      <div class="radiolist" id="modeChoice">
+        <label class="on"><input type="radio" name="mode" value="1" checked><span>Send videre efter 1 sekund <span class="sub">Det normale valg. Man når lige at se, at man er på vej ud.</span></span></label>
+        <label><input type="radio" name="mode" value="5"><span>Send videre efter 5 sekunder <span class="sub">Så når man at læse titel og beskrivelse først.</span></span></label>
+        <label><input type="radio" name="mode" value="0"><span>Send ikke videre af sig selv <span class="sub">Viser skiltet med titel, beskrivelse og en knap. Rart, hvis filen også ligger på et USB-stik uden internet.</span></span></label>
+      </div>
+      <div class="hint">Fra søgesiden går man altid direkte til adressen. Skiltet ses kun, når filen åbnes for sig selv.</div>
+    </div>
+
+    <div class="sectionhead">Knappen på skiltet</div>
+
+    <div class="field">
+      <label for="btnText">Tekst på knappen (valgfri)</label>
+      <input type="text" id="btnText" placeholder="Gå til siden">
+      <div class="hint">Står der ikke noget, bruges "Gå til siden" – eller "Gå videre nu", når filen selv sender videre. Knappen fører altid til adressen ovenfor.</div>
+    </div>
+
+    <div class="sectionhead">Hjem-knap og bunden af siden</div>
+
+    <div class="field">
+      <label for="homeMode">Hjem-knap øverst (valgfri)</label>
+      <select id="homeMode">
+        <option value="auto" selected>Automatisk — vises kun når filen er del af en app eller samling</option>
+        <option value="always">Altid vist</option>
+        <option value="never">Aldrig vist</option>
+      </select>
+      <div class="row2" style="margin-top:10px">
+        <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem" aria-label="Tekst på hjem-knappen"></div>
+        <div><input type="text" id="homeUrl" placeholder="index.html" aria-label="Adresse for hjem-knappen"></div>
+      </div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+    </div>
+
+    <div class="field">
+      <label>Nederst på den færdige side</label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="visGem" checked>
+          <span>Vis knappen <strong>Gem filen</strong></span></label>
+        <label class="check"><input type="checkbox" id="visOmFil" checked>
+          <span>Vis den foldede liste <strong>Om denne fil</strong></span></label>
+      </div>
+      <div class="hint">Slår du dem fra, forsvinder de kun fra den synlige side. Dublin Core-oplysningerne følger stadig med som skjulte meta-felter i toppen af filen. Sender filen videre efter 1 sekund, når man sjældent at se dem alligevel.</div>
+    </div>
+
+    <details class="dc" id="dcDetails">
+      <summary>Dublin Core-metadata</summary>
+      <p class="panel-sub">De 15 felter følger med ind i den færdige fil — både som skjulte oplysninger i toppen og som en foldet liste nederst på skiltet. Udgiver og emneord gør, at henvisningen havner det rigtige sted, når der filtreres i søgesiden.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="dcTitle">Titel <span class="hint">dc.title — udfyldes automatisk fra titlen</span></label>
+          <input type="text" id="dcTitle">
+        </div>
+        <div class="field">
+          <label for="dcCreator">Ophav / skaber <span class="hint">dc.creator — den der står bag siden, der henvises til</span></label>
+          <input type="text" id="dcCreator">
+        </div>
+        <div class="field">
+          <label for="dcSubject">Emne / nøgleord <span class="hint">dc.subject — adskil med semikolon; udgiveren sættes selv først</span></label>
+          <input type="text" id="dcSubject" placeholder="Roskilde; foreningsliv">
+        </div>
+        <div class="field">
+          <label for="dcDescription">Beskrivelse <span class="hint">dc.description — udfyldes automatisk fra beskrivelsen</span></label>
+          <input type="text" id="dcDescription">
+        </div>
+        <div class="field">
+          <label for="dcPublisher">Udgiver / område <span class="hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset</span></label>
+          <select id="dcPublisher">
+            <option value="">(ikke valgt)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcContributor">Bidragyder <span class="hint">dc.contributor — den der har lavet henvisningen</span></label>
+          <input type="text" id="dcContributor">
+        </div>
+        <div class="field">
+          <label for="dcDate">Dato <span class="hint">dc.date — helst ÅÅÅÅ-MM-DD, men fx "ca. 1955" er også i orden</span></label>
+          <input type="text" id="dcDate" placeholder="2026-10-01">
+        </div>
+        <div class="field">
+          <label for="dcType">Type <span class="hint">dc.type — DCMI-typeordforråd; vælg typen på det, der henvises til</span></label>
+          <select id="dcType">
+            <option value="Text" selected>Text</option>
+            <option value="Image">Image</option>
+            <option value="Sound">Sound</option>
+            <option value="MovingImage">MovingImage</option>
+            <option value="InteractiveResource">InteractiveResource</option>
+            <option value="Collection">Collection</option>
+            <option value="Event">Event</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcFormat">Format <span class="hint">dc.format — filens tekniske format</span></label>
+          <input type="text" id="dcFormat" value="text/html">
+        </div>
+        <div class="field">
+          <label for="dcIdentifier">Identifikator <span class="hint">dc.identifier — foreslås automatisk ud fra område og titel</span></label>
+          <input type="text" id="dcIdentifier" placeholder="F.eks. HSR-henvisning-foreningens-hjemmeside-2026">
+        </div>
+        <div class="field">
+          <label for="dcSource">Kilde <span class="hint">dc.source — hvor oplysningerne stammer fra</span></label>
+          <input type="text" id="dcSource">
+        </div>
+        <div class="field">
+          <label for="dcLanguage">Sprog <span class="hint">dc.language — sprogkode, fx da</span></label>
+          <input type="text" id="dcLanguage" value="da">
+        </div>
+        <div class="field">
+          <label for="dcRelation">Relation <span class="hint">dc.relation — udfyldes automatisk med adressen der henvises til</span></label>
+          <input type="text" id="dcRelation">
+        </div>
+        <div class="field">
+          <label for="dcCoverage">Dækning <span class="hint">dc.coverage — sted og/eller periode, udfyldes automatisk fra Sted</span></label>
+          <input type="text" id="dcCoverage" placeholder="Roskilde, Danmark; 1900-2026">
+        </div>
+        <div class="field">
+          <label for="dcRights">Rettigheder <span class="hint">dc.rights — ophavsret og vilkår for brug</span></label>
+          <input type="text" id="dcRights">
+        </div>
+      </div>
+      <button class="meta-btn" id="metaJsonBtn" type="button">Gem metadata som separat JSON-fil</button>
+    </details>
+
+    <button class="generate-btn" id="generateBtn" disabled>Generér henvisning (.html)</button>
+    <div class="msg" id="msgBox" aria-live="polite"></div>
+
+    <button class="meta-btn" id="nextBtn" type="button" style="margin-top:14px">Lav en til — behold udgiver, emneord og rettigheder</button>
+    <div class="field"><div class="hint">Tømmer adresse, titel, beskrivelse og delingsbillede, så du hurtigt kan lave den næste i samme serie.</div></div>
+
+  </div>
+
+  <div class="preview-pane">
+    <div class="label">Forhåndsvisning</div>
+    <div class="phone-frame">
+      <iframe id="previewFrame" title="Forhåndsvisning af den færdige henvisning"></iframe>
+    </div>
+    <p class="note">Forhåndsvisningen sender ikke videre. Det gør den færdige fil.</p>
+  </div>
+</div>
+<script>
+/* =======================================================================
+   Henvisning · Bygger — version 2.0
+   Følger Builder-standard 1.2 (september 2026). Reference: Sidebygger 1.4.
+   Format i outputfilen: "henvisning", builderVersion 2.
+   Søgeside · Bygger genkender posten som ekstern på feltet "link".
+   ======================================================================= */
+
+const BUILDER_VERSION = 2;          // tælles op ved formatændringer
+const FORMAT = 'henvisning';
+const ID_TYPE = 'henvisning';       // fast ord i dc.identifier
+
+const state = {
+  theme:'original',
+  urlRaw:'', url:'', title:'', desc:'', location:'', shareImage:'',
+  delay:1, btnText:'',
+  homeMode:'auto', homeLabel:'', homeUrl:'',
+  visGem:true, visOmFil:true,
+  taellerBlock:''
+};
+
+/* ---------- Dublin Core ---------- */
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav', subject:'Emne', description:'Beskrivelse',
+  publisher:'Udgiver', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+// Ældre navne, der rettes til det gældende navn, når en fil indlæses (afsnit 4.1).
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+const AREA_PREFIX = {};
+PUBLISHERS.forEach(p => { AREA_PREFIX[p.name] = p.prefix; });
+
+(function fillPublisherSelect(){
+  const sel = document.getElementById('dcPublisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+function ensurePublisherOption(v){
+  const sel = document.getElementById('dcPublisher');
+  if (!v || Array.from(sel.options).some(o => o.value === v)) return;
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v + ' (ikke på listen — vælg en udgiver)';
+  sel.appendChild(o);
+}
+
+function dcInputId(key){ return 'dc' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+// Felter der spejler formularen, indtil man selv skriver i dem.
+// Ud over standardens fire følger relation adressen.
+const dcTouched = { title:false, description:false, coverage:false, identifier:false, relation:false };
+
+// Ved "Lav en til" beholdes disse felter.
+const KEEP_ON_NEXT = ['creator','subject','publisher','contributor','date','type','format','language','coverage','source','rights'];
+
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Småfunktioner ---------- */
+
+function hexToRgba(hex, a){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+
+function escapeHtml(str){
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripMdToPlain(md, maxLen){
+  let t = (md || '')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen - 1).trim() + '…';
+  return t;
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+function checkUrl(raw){
+  let s = String(raw || '').trim();
+  if (!s) return '';
+  if (/^www\./i.test(s)) s = 'https://' + s;
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    if (!u.hostname || u.hostname.indexOf('.') < 0) return '';
+    return u.href;
+  } catch(e){ return ''; }
+}
+
+function hostOf(url){ try { return new URL(url).hostname.replace(/^www\./, ''); } catch(e){ return ''; } }
+
+/* ---------- Markdown (afsnit 6) ---------- */
+
+function inlineMd(s){
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+
+function mdToHtml(md){
+  if (!md) return '';
+  const lines = escapeHtml(md).split('\n');
+  let html = '', inUl = false, inOl = false, para = [];
+  function flushPara(){ if (para.length){ html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } }
+  function closeLists(){
+    if (inUl){ html += '</ul>'; inUl = false; }
+    if (inOl){ html += '</ol>'; inOl = false; }
+  }
+  for (const line of lines){
+    let m;
+    if (/^\s*$/.test(line)){ flushPara(); closeLists(); continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)){ flushPara(); closeLists(); html += '<hr>'; continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))){
+      flushPara(); closeLists();
+      const level = Math.min(Math.max(m[1].length, 2), 5);
+      html += '<h' + level + '>' + inlineMd(m[2]) + '</h' + level + '>';
+      continue;
+    }
+    if ((m = line.match(/^[-*]\s+(.*)$/))){
+      flushPara();
+      if (inOl){ html += '</ol>'; inOl = false; }
+      if (!inUl){ html += '<ul>'; inUl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^\d+\.\s+(.*)$/))){
+      flushPara();
+      if (inUl){ html += '</ul>'; inUl = false; }
+      if (!inOl){ html += '<ol>'; inOl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^&gt;\s?(.*)$/))){
+      flushPara(); closeLists();
+      html += '<blockquote>' + inlineMd(m[1]) + '</blockquote>';
+      continue;
+    }
+    closeLists();
+    para.push(line);
+  }
+  flushPara(); closeLists();
+  return html;
+}
+
+/* ---------- Dublin Core: indsamling og automatik ---------- */
+
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+function collectDublinCore(){
+  const dc = {};
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    const val = el ? el.value.trim() : '';
+    if (val) dc[key] = val;
+  });
+  // Udgiveren skal stå som første emneord (afsnit 4.1).
+  if (dc.publisher){
+    const parts = (dc.subject || '').split(';')
+      .map(x => { const t = x.trim(), n = normalizePublisher(t); return AREA_PREFIX[n] ? n : t; })
+      .filter(Boolean);
+    const rest = parts.filter(p => p !== dc.publisher);
+    dc.subject = [dc.publisher].concat(rest).join('; ');
+  }
+  return dc;
+}
+
+function syncAutoDc(){
+  if (!dcTouched.title) $('dcTitle').value = state.title.trim();
+  if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.desc, 300);
+  if (!dcTouched.coverage) $('dcCoverage').value = state.location.trim();
+  if (!dcTouched.relation) $('dcRelation').value = state.url;
+  if (!dcTouched.identifier){
+    const prefix = AREA_PREFIX[$('dcPublisher').value];
+    const name = slugify(state.title, '');
+    const year = new Date().getFullYear();
+    $('dcIdentifier').value = (prefix && name) ? (prefix + '-' + ID_TYPE + '-' + name + '-' + year) : '';
+  }
+}
+
+function buildDcMetaTags(dc){
+  const lines = [];
+  DC_FIELDS.forEach(key => {
+    if (!dc[key]) return;
+    if (key === 'subject'){
+      dc[key].split(';').forEach(part => {
+        const v = part.trim();
+        if (v) lines.push('<meta name="DC.subject" content="' + escapeHtml(v) + '">');
+      });
+    } else {
+      lines.push('<meta name="DC.' + key + '" content="' + escapeHtml(dc[key]) + '">');
+    }
+  });
+  if (!lines.length) return '';
+  return '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">\n' + lines.join('\n');
+}
+
+function buildDcSection(dc){
+  const rows = DC_FIELDS
+    .filter(key => dc[key])
+    .map(key => '<div class="meta-row"><dt>' + DC_LABELS[key] + ' <span class="dc-tag">dc.' + key + '</span></dt><dd>' + escapeHtml(dc[key]) + '</dd></div>');
+  if (!rows.length) return '';
+  return '<details class="meta" id="omfilen">'
+    + '<summary><span>Om denne fil</span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+    + '<dl class="meta-list">' + rows.join('') + '</dl>'
+    + '</details>';
+}
+
+// Lille ikon til browserfanen: en pil i temaets accentfarve.
+function iconDataUrl(t){
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    + '<circle cx="32" cy="32" r="30" fill="' + t.accent + '"/>'
+    + '<path d="M22 42L42 22M27 22h15v15" fill="none" stroke="' + t.onAccent + '" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+/* =======================================================================
+   Den færdige henvisning
+   ======================================================================= */
+
+function buildPageHTML(s, isPreview){
+  const t = THEMES[s.theme] || THEMES.original;
+  const dc = collectDublinCore();
+  const dcMeta = buildDcMetaTags(dc);
+  const dcBlock = (s.visOmFil === false) ? '' : buildDcSection(dc);
+  const pageLang = (dc.language || 'da').trim() || 'da';
+  const pageTitle = s.title.trim() || 'Henvisning';
+  const safeName = slugify(s.title, 'henvisning');
+  const url = s.url || 'https://';
+  const host = hostOf(s.url);
+  const redirect = s.delay > 0 && !!s.url;
+  const btnText = s.btnText.trim() || (redirect ? 'Gå videre nu' : 'Gå til siden');
+
+  const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
+  const homeLabel = (s.homeLabel && s.homeLabel.trim()) ? s.homeLabel.trim() : 'Hjem';
+  const homeUrl = (s.homeUrl && s.homeUrl.trim()) ? s.homeUrl.trim() : 'index.html';
+  const homeVisible = homeMode === 'always' || (isPreview && homeMode !== 'never');
+  const homeBlock = homeMode === 'never' ? '' :
+    '<div class="homewrap' + (homeVisible ? ' show' : '') + '" id="topbar" data-mode="' + homeMode + '">'
+    + '<a class="home-btn" id="homeBtn" href="' + escapeHtml(homeUrl) + '">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>'
+    + '<span>' + escapeHtml(homeLabel) + '</span></a></div>';
+
+  const kicker = redirect
+    ? (s.delay > 1 ? 'Om få sekunder sendes du videre til' : 'Du sendes videre til')
+    : 'Henvisning til en anden hjemmeside';
+
+  const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button class="save-btn" id="dlBtn">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
+    + '<span>Gem filen</span></button></div>'
+    + '<p class="save-note">En henvisning. Gemmer skiltet som én fil på din egen computer - selve indholdet ligger på en anden hjemmeside.</p>';
+
+  const footParts = [];
+  if (dc.creator) footParts.push(escapeHtml(dc.creator));
+  if (dc.publisher) footParts.push(escapeHtml(dc.publisher));
+  const year = (dc.date && dc.date.match(/\d{4}/)) ? dc.date.match(/\d{4}/)[0] : String(new Date().getFullYear());
+  const footBlock = footParts.length
+    ? '<footer class="site-foot"><p>' + footParts.join(' · ') + ' · ' + year + '</p></footer>\n'
+    : '';
+
+  const sourceData = {
+    format: FORMAT, builderVersion: BUILDER_VERSION,
+    theme: s.theme,
+    link: s.url,
+    title: s.title, description: s.desc, location: s.location, shareImage: s.shareImage,
+    delay: s.delay, btnText: s.btnText,
+    homeMode: homeMode, homeLabel: s.homeLabel, homeUrl: s.homeUrl,
+    visGem: s.visGem !== false, visOmFil: s.visOmFil !== false,
+    dublinCore: dc
+  };
+  const sourceJson = JSON.stringify(sourceData)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+  const ogDesc = stripMdToPlain(s.desc, 200);
+  const shareUrl = (s.shareImage || '').trim();
+  const taellerBlock = (s.taellerBlock && !isPreview) ? '\n' + s.taellerBlock + '\n' : '';
+
+  return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
++ '<meta charset="UTF-8">\n'
++ '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
++ '<!-- Ekstern henvisning, lavet med Henvisning · Bygger. Filen peger ud på en side,\n'
++ '     der ikke ligger i samlingen. Adressen står i "link" i builder-source-data. -->\n'
++ '<title>' + escapeHtml(pageTitle) + '</title>\n'
++ ((redirect && !isPreview) ? '<meta http-equiv="refresh" content="' + s.delay + '; url=' + escapeHtml(url) + '">\n' : '')
++ '<meta property="og:type" content="website">\n'
++ '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
++ (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
++ (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
++ '<link rel="icon" href="' + iconDataUrl(t) + '">\n'
++ (dcMeta ? dcMeta + '\n' : '')
++ '<script type="application/json" id="builder-source-data">' + sourceJson + '<\/script>\n'
++ '<style>\n'
++ ':root{\n'
++ '  --accent:' + t.accent + '; --accent-dark:' + t.accentDark + '; --on-accent:' + t.onAccent + ';\n'
++ '  --paper:' + t.paper + '; --surface:' + t.surface + '; --ink:' + t.ink + '; --body:' + t.body + ';\n'
++ '  --muted:' + t.muted + '; --line:' + t.line + '; --quote:' + t.quote + ';\n'
++ '  --soft-line:' + hexToRgba(t.accent, 0.35) + ';\n'
++ '  --shadow:rgba(30,25,15,0.10);\n'
++ '  --sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;\n'
++ '  --fs:1;\n'
++ '}\n'
++ 'body.dark{\n'
++ '  --paper:' + t.dPaper + '; --surface:' + t.dSurface + '; --ink:' + t.dInk + '; --body:' + t.dBody + ';\n'
++ '  --muted:' + t.dMuted + '; --line:' + t.dLine + '; --quote:' + t.dQuote + ';\n'
++ '  --soft-line:' + hexToRgba(t.accent, 0.55) + ';\n'
++ '  --shadow:rgba(0,0,0,0.45);\n'
++ '}\n'
++ '*{box-sizing:border-box;}\n'
++ 'html,body{min-height:100%;}\n'
++ 'body{margin:0; background:var(--paper); color:var(--body); font-family:var(--sans); line-height:1.65; display:flex; flex-direction:column; min-height:100vh;}\n'
++ '.site-head{position:sticky; top:0; z-index:40; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px var(--shadow);}\n'
++ '.head-inner{max-width:1000px; margin:0 auto; padding:10px 18px; display:flex; align-items:center; gap:10px; min-height:56px;}\n'
++ '.head-tools{margin-left:auto; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}\n'
++ '.tool{background:transparent; border:none; color:var(--on-accent); cursor:pointer; font-family:var(--sans); font-size:16px; font-weight:700; padding:8px 11px; border-radius:6px; line-height:1; min-width:44px; min-height:44px;}\n'
++ '.tool:hover{background:rgba(255,255,255,0.16);}\n'
++ '.tool:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ '.tool svg{width:22px; height:22px; display:block; margin:0 auto;}\n'
++ '.tool.small{font-size:14px;}\n'
++ '.homewrap{display:none;}\n'
++ '.homewrap.show{display:block;}\n'
++ '.home-btn{display:inline-flex; align-items:center; gap:8px; padding:7px 15px 7px 11px; min-height:44px; border-radius:999px; border:2px solid rgba(255,255,255,0.6); color:var(--on-accent); text-decoration:none; font-size:15.5px; font-weight:700;}\n'
++ '.home-btn svg{width:18px; height:18px;}\n'
++ '.home-btn:hover{background:rgba(255,255,255,0.16);}\n'
++ '.home-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}\n'
++ 'main{flex:1; width:100%; max-width:760px; margin:0 auto; padding:48px 18px 10px; font-size:calc(17.5px * var(--fs));}\n'
++ '.sign{background:var(--surface); border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:10px; padding:1.6em 1.6em 1.4em; box-shadow:0 4px 14px var(--shadow);}\n'
++ '.kicker{font-size:0.88em; color:var(--muted); margin:0 0 0.4em;}\n'
++ 'h1{font-size:2em; line-height:1.2; margin:0 0 0.6em; color:var(--ink); font-weight:700;}\n'
++ '.desc{margin:0 0 1.4em;}\n'
++ '.desc p{margin:0 0 0.9em;}\n'
++ '.desc h2, .desc h3{color:var(--ink); line-height:1.3; margin:1.1em 0 0.4em;}\n'
++ '.desc h2{font-size:1.25em;} .desc h3{font-size:1.1em;}\n'
++ '.desc ul, .desc ol{margin:0 0 0.9em; padding-left:1.3em;}\n'
++ '.desc li::marker{color:var(--accent);}\n'
++ '.desc a{color:var(--accent);}\n'
++ '.desc blockquote{margin:1em 0; padding:0.3em 0 0.3em 1em; border-left:4px solid var(--soft-line); color:var(--quote); font-style:italic;}\n'
++ '.desc hr{border:none; border-top:1px solid var(--line); margin:1.4em 0;}\n'
++ '.desc code{background:var(--paper); border:1px solid var(--line); border-radius:4px; padding:0 0.3em; font-size:0.92em;}\n'
++ '.go-wrap{margin:0;}\n'
++ '.go{display:inline-flex; align-items:center; gap:0.5em; min-height:48px; padding:0.7em 1.4em; border-radius:999px; background:var(--accent); color:var(--on-accent); text-decoration:none; font-size:1.05em; font-weight:700; box-shadow:0 3px 10px var(--shadow);}\n'
++ '.go:hover{background:var(--accent-dark);}\n'
++ '.go:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}\n'
++ '.go svg{width:1.1em; height:1.1em;}\n'
++ '.host{font-size:0.9em; color:var(--muted); margin:0.8em 0 0; word-break:break-all;}\n'
++ '.note{margin:1.4em 0 0; padding-top:1em; border-top:1px solid var(--line); font-size:0.88em; color:var(--muted);}\n'
++ '.save-wrap{display:flex; justify-content:center; margin:34px 0 6px;}\n'
++ '.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); border-radius:999px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}\n'
++ '.save-btn:hover{background:var(--accent); color:var(--on-accent);}\n'
++ '.save-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}\n'
++ '.save-btn svg{width:20px; height:20px;}\n'
++ '.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px 0 0;}\n'
++ '.meta{margin:40px 0 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px;}\n'
++ '.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none; min-height:28px;}\n'
++ '.meta summary::-webkit-details-marker{display:none;}\n'
++ '.meta summary:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}\n'
++ '.meta[open] summary{margin-bottom:12px;}\n'
++ '.meta-list{margin:0;}\n'
++ '.meta-row{padding:7px 0; border-top:1px solid var(--line);}\n'
++ '.meta-row dt{font-weight:700; color:var(--ink); font-size:0.88em;}\n'
++ '.meta-row dd{margin:2px 0 0; font-size:0.93em; color:var(--body); word-break:break-word;}\n'
++ '.dc-tag{font-weight:400; color:var(--muted); font-size:0.88em;}\n'
++ '.site-foot{margin-top:44px; background:var(--accent-dark); color:var(--on-accent);}\n'
++ '.site-foot p{max-width:760px; margin:0 auto; padding:20px 18px; text-align:center; font-size:14.5px;}\n'
++ '@media print{ .site-head, .save-wrap, .save-note{display:none !important;} body{background:#fff;} }\n'
++ '</style>\n</head>\n<body>\n'
++ '<header class="site-head">\n<div class="head-inner">\n'
++ homeBlock
++ '<div class="head-tools">'
++ '<button class="tool small" id="fontDec" aria-label="Mindre skrift">-A</button>'
++ '<button class="tool" id="fontInc" aria-label="Større skrift">+A</button>'
++ '<button class="tool" id="darkBtn" aria-label="Skift mellem lys og mørk baggrund"><svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 15.4A8.6 8.6 0 0 1 8.6 3.6a8.6 8.6 0 1 0 11.8 11.8z"/></svg>'
++ '<svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>'
++ '</div>\n</div>\n</header>\n'
++ '<main id="top">\n'
++ '<div class="sign">'
++ '<p class="kicker">' + escapeHtml(kicker) + '</p>'
++ '<h1>' + escapeHtml(pageTitle) + '</h1>'
++ (s.desc.trim() ? '<div class="desc">' + mdToHtml(s.desc) + '</div>' : '')
++ '<p class="go-wrap"><a class="go" id="goLink" href="' + escapeHtml(url) + '">' + escapeHtml(btnText)
++ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M9 7h8v8"/></svg></a></p>'
++ (host ? '<p class="host">' + escapeHtml(host) + '</p>' : '')
++ '<p class="note">Denne fil er kun et lille skilt. Selve indholdet ligger på en anden hjemmeside og kræver internet.</p>'
++ '</div>\n'
++ saveBlock + dcBlock
++ '\n</main>\n' + footBlock
++ '<script>\n'
++ '(function(){\n'
++ '  var fs = 1;\n'
++ '  function setFs(v){ fs = Math.min(1.7, Math.max(0.85, v)); document.documentElement.style.setProperty("--fs", fs.toFixed(2)); }\n'
++ '  document.getElementById("fontInc").addEventListener("click", function(){ setFs(fs + 0.1); });\n'
++ '  document.getElementById("fontDec").addEventListener("click", function(){ setFs(fs - 0.1); });\n'
++ '  document.getElementById("darkBtn").addEventListener("click", function(){\n'
++ '    var on = document.body.classList.toggle("dark");\n'
++ '    document.getElementById("iconMoon").style.display = on ? "none" : "block";\n'
++ '    document.getElementById("iconSun").style.display = on ? "block" : "none";\n'
++ '  });\n'
++ '  /* --- Gem filen: en ren kopi af skiltet, som det var, da det blev lavet --- */\n'
++ '  var dlBtn = document.getElementById("dlBtn");\n'
++ '  if (dlBtn) dlBtn.addEventListener("click", function(){\n'
++ '    var bar2 = document.getElementById("topbar");\n'
++ '    if (bar2 && bar2.getAttribute("data-mode") !== "auto") bar2 = null;\n'
++ '    var barWasShown = bar2 && bar2.classList.contains("show");\n'
++ '    var wasDark = document.body.classList.contains("dark");\n'
++ '    var fsWas = document.documentElement.style.getPropertyValue("--fs");\n'
++ '    if (bar2) bar2.classList.remove("show");\n'
++ '    document.body.classList.remove("dark");\n'
++ '    document.getElementById("iconMoon").style.display = "block";\n'
++ '    document.getElementById("iconSun").style.display = "none";\n'
++ '    document.documentElement.style.removeProperty("--fs");\n'
++ '    var full = "<!DOCTYPE html>\\n" + document.documentElement.outerHTML;\n'
++ '    if (bar2 && barWasShown) bar2.classList.add("show");\n'
++ '    if (wasDark){ document.body.classList.add("dark"); document.getElementById("iconMoon").style.display = "none"; document.getElementById("iconSun").style.display = "block"; }\n'
++ '    if (fsWas) document.documentElement.style.setProperty("--fs", fsWas);\n'
++ '    try {\n'
++ '      var blob = new Blob([full], {type:"text/html"});\n'
++ '      var url = URL.createObjectURL(blob);\n'
++ '      var a = document.createElement("a");\n'
++ '      a.href = url; a.download = ' + JSON.stringify(safeName + '.html') + ';\n'
++ '      document.body.appendChild(a); a.click(); document.body.removeChild(a);\n'
++ '      URL.revokeObjectURL(url);\n'
++ '    } catch(e){ alert("Filen kunne ikke gemmes her i browseren."); }\n'
++ '  });\n'
++ '  /* --- Hjem-knappen: i "automatisk" vises den kun, hvis filen er del af noget større --- */\n'
++ '  var bar = document.getElementById("topbar");\n'
++ '  if (bar){\n'
++ '    var link = document.getElementById("homeBtn");\n'
++ '    var mode = ' + JSON.stringify(homeMode) + ';\n'
++ '    var target = ' + JSON.stringify(homeUrl) + ';\n'
++ '    function show(){ bar.classList.add("show"); }\n'
++ '    var fromUrl = null;\n'
++ '    try { var p = new URLSearchParams(location.search); fromUrl = p.get("hjem") || p.get("home"); } catch(e){}\n'
++ '    if (fromUrl){ target = fromUrl; }\n'
++ '    link.setAttribute("href", target);\n'
++ '    if (mode === "always" || fromUrl){ show(); }\n'
++ '    else if (mode === "auto"){\n'
++ '      var path = (location.pathname || "").toLowerCase();\n'
++ '      var isIndex = path.charAt(path.length-1) === "/" || path.indexOf("/index.html") === path.length - 11;\n'
++ '      if (!isIndex){\n'
++ '        var shown = false;\n'
++ '        try {\n'
++ '          if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); shown = true; }\n'
++ '        } catch(e){}\n'
++ '        if (!shown && navigator.standalone === true){ show(); shown = true; }\n'
++ '        if (!shown){\n'
++ '          try {\n'
++ '            if (document.referrer){\n'
++ '              var ref = new URL(document.referrer), here = new URL(location.href);\n'
++ '              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));\n'
++ '              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));\n'
++ '              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }\n'
++ '            }\n'
++ '          } catch(e){}\n'
++ '        }\n'
++ '        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){\n'
++ '          try { fetch(target, {method:"HEAD"}).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}\n'
++ '        }\n'
++ '      }\n'
++ '    }\n'
++ '  }\n'
++ '})();\n'
++ '<\/script>\n'
++ taellerBlock
++ '</body>\n</html>';
+}
+
+/* =======================================================================
+   Formular, forhåndsvisning og knapper
+   ======================================================================= */
+
+function readForm(){
+  state.urlRaw = $('url').value;
+  state.url = checkUrl(state.urlRaw);
+  state.title = $('title').value;
+  state.desc = $('desc').value;
+  state.location = $('location').value;
+  state.shareImage = $('shareImage').value;
+  const m = document.querySelector('#modeChoice input:checked');
+  state.delay = m ? parseInt(m.value, 10) : 1;
+  state.btnText = $('btnText').value;
+  state.homeMode = $('homeMode').value;
+  state.homeLabel = $('homeLabel').value;
+  state.homeUrl = $('homeUrl').value;
+  state.visGem = $('visGem').checked;
+  state.visOmFil = $('visOmFil').checked;
+}
+
+function updateUrlStatus(){
+  const raw = state.urlRaw.trim();
+  const st = $('urlStatus');
+  if (!raw){ st.textContent = ''; st.className = 'urlstatus'; }
+  else if (state.url){ st.textContent = 'Forstået – peger på ' + hostOf(state.url) + '.'; st.className = 'urlstatus ok'; }
+  else { st.textContent = 'Det ligner ikke en webadresse. Den skal begynde med https:// og indeholde et domæne, fx https://roskilde.dk'; st.className = 'urlstatus warn'; }
+  $('tryBtn').disabled = !state.url;
+}
+
+function checkReady(){
+  $('generateBtn').disabled = !(state.url && state.title.trim());
+}
+
+function renderPreview(){
+  readForm();
+  syncAutoDc();
+  updateUrlStatus();
+  checkReady();
+  $('previewFrame').srcdoc = buildPageHTML(state, true);
+}
+
+['url','title','desc','location','shareImage','btnText','homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', renderPreview);
+  if (el.tagName === 'SELECT' || el.type === 'checkbox') el.addEventListener('change', renderPreview);
+});
+
+DC_FIELDS.forEach(key => {
+  const el = $(dcInputId(key));
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+    renderPreview();
+  });
+  if (el.tagName === 'SELECT') el.addEventListener('change', () => { renderPreview(); });
+});
+
+function setMode(value){
+  document.querySelectorAll('#modeChoice label').forEach(lab => {
+    const r = lab.querySelector('input');
+    r.checked = (r.value === String(value));
+    lab.classList.toggle('on', r.checked);
+  });
+}
+document.querySelectorAll('#modeChoice input').forEach(r => {
+  r.addEventListener('change', () => { setMode(r.value); renderPreview(); });
+});
+
+document.querySelectorAll('#themePicker input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', () => { selectTheme(radio.value); renderPreview(); });
+});
+
+function selectTheme(themeKey){
+  state.theme = THEMES[themeKey] ? themeKey : 'original';
+  document.querySelectorAll('#themePicker input[name="theme"]').forEach(r => { r.checked = (r.value === state.theme); });
+  document.querySelectorAll('#themePicker .theme-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.theme === state.theme);
+  });
+}
+
+$('tryBtn').addEventListener('click', () => { if (state.url) window.open(state.url, '_blank', 'noopener'); });
+
+/* ---------- Indlæs eksisterende henvisning (afsnit 7) ---------- */
+
+function setField(id, value){
+  const el = $(id);
+  if (el) el.value = value || '';
+}
+
+function extractTaellerBlock(text){
+  const startMark = text.indexOf('TÆLLER');
+  if (startMark === -1) return '';
+  const endMark = text.indexOf('TÆLLER SLUT');
+  if (endMark === -1) return '';
+  const start = text.lastIndexOf('<!--', startMark);
+  const end = text.indexOf('-->', endMark);
+  if (start === -1 || end === -1 || end < start) return '';
+  return text.slice(start, end + 3);
+}
+
+let publisherFixed = '';
+
+function fillDcFields(dc){
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    if (!el) return;
+    let v = (dc && dc[key]) ? dc[key] : '';
+    if (key === 'publisher'){
+      const orig = v;
+      v = normalizePublisher(v);
+      if (orig && orig !== v) publisherFixed = orig + '" er rettet til "' + v;
+      ensurePublisherOption(v);
+    }
+    if (!v){
+      if (key === 'format') v = 'text/html';
+      else if (key === 'language') v = 'da';
+      else if (key === 'type') v = 'Text';
+    }
+    el.value = v;
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+  });
+}
+
+function rejectLoad(text, input){
+  $('loadStatus').textContent = text;
+  $('loadStatus').className = 'status pending';
+  input.value = '';
+}
+
+$('loadPage').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('loadStatus').textContent = 'Læser fil …';
+  $('loadStatus').className = 'status pending';
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const dataScript = doc.getElementById('builder-source-data');
+    if (!dataScript) return rejectLoad('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.', e.target);
+    let data;
+    try { data = JSON.parse(dataScript.textContent); }
+    catch(err){ return rejectLoad('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.', e.target); }
+    if (data.format !== FORMAT){
+      // Henvisninger fra version 1 havde formatet "Ekstern henvisning".
+      if (data.format === 'Ekstern henvisning' || (!data.format && data.link))
+        return rejectLoad('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.', e.target);
+      return rejectLoad('Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.', e.target);
+    }
+    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION)
+      return rejectLoad('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.', e.target);
+
+    selectTheme(data.theme || 'original');
+    setField('url', data.link || '');
+    setField('title', data.title || '');
+    setField('desc', data.description || '');
+    setField('location', data.location || '');
+    setField('shareImage', data.shareImage || '');
+    setField('btnText', data.btnText || '');
+    setMode(data.delay != null ? data.delay : 1);
+    $('homeMode').value = (data.homeMode === 'always' || data.homeMode === 'never') ? data.homeMode : 'auto';
+    setField('homeLabel', data.homeLabel || '');
+    setField('homeUrl', data.homeUrl || '');
+    $('visGem').checked = data.visGem !== false;
+    $('visOmFil').checked = data.visOmFil !== false;
+    publisherFixed = '';
+    fillDcFields(data.dublinCore || {});
+
+    state.taellerBlock = extractTaellerBlock(text);
+    $('loadStatus').textContent = 'Indlæst: ' + file.name
+      + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
+      + (publisherFixed ? ' · udgiveren "' + publisherFixed + '"' : '');
+    $('loadStatus').className = 'status';
+    renderPreview();
+  } catch(err){
+    $('loadStatus').textContent = 'Fejl ved indlæsning: ' + err.message;
+    $('loadStatus').className = 'status pending';
+  }
+});
+
+/* ---------- Gem ---------- */
+
+function downloadBlob(content, type, filename){
+  const blob = new Blob([content], {type:type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+$('metaJsonBtn').addEventListener('click', () => {
+  readForm();
+  syncAutoDc();
+  const dc = collectDublinCore();
+  const msg = $('msgBox');
+  if (Object.keys(dc).length === 0){
+    msg.textContent = 'Der er ingen Dublin Core-felter udfyldt endnu.';
+    msg.className = 'msg err';
+    return;
+  }
+  const payload = {'@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString()};
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json', slugify(state.title, 'henvisning') + '-metadata.json');
+  msg.textContent = 'Metadatafilen er downloadet.';
+  msg.className = 'msg ok';
+});
+
+$('generateBtn').addEventListener('click', () => {
+  const msg = $('msgBox');
+  try {
+    readForm();
+    syncAutoDc();
+    if (!state.url || !state.title.trim()){
+      msg.textContent = 'Skriv både adressen og en titel først.';
+      msg.className = 'msg err';
+      return;
+    }
+    const html = buildPageHTML(state, false);
+    const name = slugify(state.title, 'henvisning') + '.html';
+    downloadBlob(html, 'text/html', name);
+    const dc = collectDublinCore();
+    const missing = [];
+    if (!dc.description) missing.push('beskrivelse');
+    if (!dc.publisher) missing.push('udgiver');
+    if (!dc.subject) missing.push('emneord');
+    const kb = Math.max(1, Math.round(new Blob([html]).size / 1024));
+    msg.textContent = 'Henvisningen er gemt som ' + name + ' (' + kb + ' KB). Læg den i mappen, og kør Søgeside · Bygger igen.'
+      + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig nederst i filen.' : '')
+      + (missing.length ? ' Bemærk: uden ' + missing.join(', ') + ' er henvisningen sværere at finde og filtrere i søgesiden.' : '');
+    msg.className = 'msg ' + (missing.length ? 'warn' : 'ok');
+  } catch(err){
+    msg.textContent = 'Der gik noget galt: ' + err.message;
+    msg.className = 'msg err';
+  }
+});
+
+$('nextBtn').addEventListener('click', () => {
+  ['url','title','desc','shareImage'].forEach(id => setField(id, ''));
+  DC_FIELDS.forEach(key => {
+    if (KEEP_ON_NEXT.indexOf(key) >= 0) return;
+    const el = $(dcInputId(key));
+    if (el.tagName !== 'SELECT') el.value = '';
+    if (key in dcTouched) dcTouched[key] = false;
+  });
+  state.taellerBlock = '';
+  $('loadPage').value = '';
+  $('loadStatus').textContent = 'Ingen fil valgt';
+  $('loadStatus').className = 'status';
+  $('msgBox').className = 'msg';
+  renderPreview();
+  $('url').focus();
+});
+
+selectTheme('original');
+renderPreview();
+</script>
+</body>
+</html>
