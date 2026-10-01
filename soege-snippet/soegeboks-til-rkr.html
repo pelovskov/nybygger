@@ -1,0 +1,29 @@
+<!-- Lokalhistorisk Søgeportal · søgeboks til en forenings hjemmeside
+     Ret adressen, nøglen (rtv), id-navnet og teksterne til den enkelte forening.
+     Undgå tomme linjer i koden, når den sættes ind i WordPress. -->
+<div class="lsp-soeg">
+<style>
+.lsp-soeg{--lsp-farve:#E30A0B;max-width:40rem;margin:1.5rem 0;padding:1.25rem;border:2px solid #D9C7CF;border-radius:10px;background:#FAF9F5;color:#241520;box-sizing:border-box}
+.lsp-soeg *{box-sizing:border-box}
+.lsp-soeg h3{margin:0 0 .3rem;font-size:1.35rem;line-height:1.3;color:#241520}
+.lsp-soeg p{margin:0 0 .9rem;font-size:1rem;line-height:1.5;color:#58424D}
+.lsp-soeg .lsp-felt{display:block;font-weight:bold;margin:0 0 .35rem;font-size:1.05rem}
+.lsp-soeg .lsp-raekke{display:flex;flex-wrap:wrap;gap:.5rem}
+.lsp-soeg input[type="search"]{flex:1 1 14rem;min-height:3rem;margin:0;padding:.5rem .8rem;font:inherit;font-size:1.1rem;border:2px solid #8A7680;border-radius:8px;background:#fff;color:#241520}
+.lsp-soeg button{flex:0 0 auto;min-height:3rem;margin:0;padding:0 1.4rem;font:inherit;font-size:1.1rem;font-weight:bold;border:0;border-radius:8px;background:var(--lsp-farve);color:#fff;cursor:pointer}
+.lsp-soeg button:hover{filter:brightness(.88)}
+.lsp-soeg input:focus-visible,.lsp-soeg button:focus-visible{outline:3px solid var(--lsp-farve);outline-offset:2px}
+.lsp-soeg .lsp-valg{display:flex;align-items:center;gap:.55rem;margin:.8rem 0 0;font-size:1rem;cursor:pointer}
+.lsp-soeg .lsp-valg input{width:1.3rem;height:1.3rem;margin:0;accent-color:var(--lsp-farve)}
+</style>
+<form action="https://sfbbilleder.eu/over/sbtv/index.php" method="get" role="search">
+<h3>Søg i vores arkiv</h3>
+<p>Billeder, lyd, video og artikler i Lokalhistorisk Søgeportal.</p>
+<label class="lsp-felt" for="lsp-q-rkr">Hvad leder du efter?</label>
+<div class="lsp-raekke">
+<input id="lsp-q-rtv" name="q" type="search" placeholder="Fx en gade, et sted eller et årstal">
+<button type="submit">Søg</button>
+</div>
+<label class="lsp-valg"><input type="checkbox" name="forening" value="rkr" checked> Søg kun i Røde Kors Roskilde's materiale</label>
+</form>
+</div>
