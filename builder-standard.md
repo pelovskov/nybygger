@@ -1,7 +1,7 @@
 # Builder-standard
 
 **Fælles specifikation for værktøjskassen**
-Version 1.2 · september 2026
+Version 1.3 · oktober 2026
 
 Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.4).
 Når noget er i tvivl, er det referencefilen der gælder.
@@ -20,16 +20,19 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | Bogbygger | e-bog / lydbog | Text |
 | Enkeltbillede · Bygger | ét billede i høj kvalitet med tekst og Exif | Image |
 | Før og Nu · Bygger | to billeder fra samme sted med slider | Image |
-| Videokort · Bygger | kort til en YouTube-udsendelse med kapitler | MovingImage |
+| Mediekort · Bygger | kort til en video (YouTube) eller en podcast, med kapitler og evt. transskription | MovingImage (video), Sound (podcast) |
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
 | Vejledningsbygger | trin-for-trin vejledning | afklares |
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
+| Metadata-hjælper | ingen fil; laver en AI-prompt til Dublin Core og kontrollerer svaret (se afsnit 11) | - |
 
 Bragt i overensstemmelse med standarden: Sidebygger (v1.4) og Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2).
 
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
 Vejledningsbygger og PWA · Bygger afviger bevidst på enkelte punkter, fordi de ikke laver indhold på samme måde som de andre. Afvigelserne skal stå i appens egen beskrivelse.
+
+Metadata-hjælper laver ingen outputfil og har derfor hverken temaer, forhåndsvisning af en side, indlæsning eller afsnit 5. Den følger standarden for builderens udseende (afsnit 2 og 3), `PUBLISHERS`, dc.type-listen og de 15 felter i afsnit 4.
 
 Ældre filer, der er lavet før en bygger blev bragt i overensstemmelse med standarden, laves om i den nye bygger. Byggerne skal ikke bære rundt på kode til at forstå gamle formater.
 
@@ -192,7 +195,7 @@ const THEMES = {
 };
 ```
 
-Roskilde TV's farveprik i vælgeren er flerfarvet (logoets seks prikfarver). Videokort · Bygger må desuden vise prikrækken i selve kortet.
+Roskilde TV's farveprik i vælgeren er flerfarvet (logoets seks prikfarver). Mediekort · Bygger må desuden vise prikrækken i selve kortet.
 
 Temaet skrives ud som CSS-variabler i `:root` i den genererede fil, aldrig som faste farver inde i reglerne. Kommer et nyt tema til, tilføjes det her først og kopieres derefter til alle byggere.
 
@@ -478,11 +481,15 @@ Når flere foreninger og enkeltpersoner leverer materiale, skal metadata udfylde
 
 ### 11.2 Arbejdsgang
 
-1. Bidragyderen udfylder INDLEDNING øverst i sin tekst.
-2. Teksten indsættes i AI'en, som svarer med de 15 felter.
-3. Felter markeret [?] kontrolleres.
+Arbejdsgangen foregår i **Metadata-hjælper**, som laver INDLEDNINGEN ud fra en formular og kontrollerer AI'ens svar. Den kan også gøres i hånden.
+
+1. Bidragyderen udfylder INDLEDNING (i Metadata-hjælperens formular eller øverst i sin tekst).
+2. Prompten med INDLEDNING og tekst indsættes i AI'en, som svarer med de 15 felter.
+3. Svaret kontrolleres. Metadata-hjælper retter kendte stavemåder af udgiveren og markerer felter med [?], forkert dato, forkert type, udfyldt identifikator, udgiver der ikke står som første emneord, navne der ikke findes i teksten, og felter der afviger fra INDLEDNINGEN. Felterne kan ikke kopieres videre, før fejl og [?] er rettet.
 4. Identifikatoren overlades til byggeren, der foreslår den automatisk.
 5. Felterne kopieres ind i byggeren.
+
+Metadata-hjælper kan læse svaret, uanset om AI'en skriver ét felt pr. linje, alle felter i ét afsnit, en tabel eller med fed skrift. Afprøvet med Claude, Gemini og Copilot 365.
 
 ### 11.3 Indledning (udfyldes af bidragyder)
 
@@ -494,10 +501,15 @@ Dato for materialet:
 Udgiver:
 Rettigheder:
 Kilde (hvor stammer materialet fra):
+Arbejdstitel:
+Type:
+Sted og periode:
 
 TEKST
 ...
 ```
+
+De tre sidste linjer er valgfrie. Type skrives som dc.type-værdien (fx Sound). I Metadata-hjælper udfyldes den ud fra den valgte bygger.
 
 ### 11.4 Prompt
 
@@ -549,11 +561,20 @@ Rettigheder (dc.rights):
 
 ### 11.5 Vedligeholdelse
 
-Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en ny udgiver, rettes begge steder.
+Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en ny udgiver, rettes den tre steder: i `PUBLISHERS` i byggerne, i prompten her og i Metadata-hjælper (som bygger prompten ud fra sin egen kopi af `PUBLISHERS`).
+
+Ændres prompten her, rettes `PROMPT` i Metadata-hjælper tilsvarende.
 
 ---
 
 ## 12. Ændringslog
+
+**Version 1.3 — oktober 2026.**
+- Videokort · Bygger er afløst af Mediekort · Bygger, som laver kort til både video (MovingImage) og podcast (Sound).
+- Nyt værktøj: Metadata-hjælper (v1.1), der laver INDLEDNING og prompt efter afsnit 11 og kontrollerer AI'ens svar. Afviger bevidst fra standarden, fordi den ikke laver en fil.
+- INDLEDNING i 11.3 udvidet med Arbejdstitel, Type og Sted og periode. Prompten i 11.4 er uændret.
+- 11.2 beskriver arbejdsgangen med Metadata-hjælper.
+- 11.5: udgiverlisten rettes nu også i Metadata-hjælper.
 
 **Version 1.2 — september 2026.**
 - Slug: æ→ae, ø→oe, å→aa, før accenterne fjernes. Gælder filnavn og titelslug i dc.identifier. Gamle filer beholder deres navn.
@@ -591,4 +612,5 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 **Afklares, når byggeren tages op:**
 - dc.type for Henvisning, Vejledning og PWA.
+- Kort typeord i dc.identifier for Mediekort · Bygger: "video" for video, og hvilket ord for podcast (fx "podcast" eller "lyd").
 - Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger og Album · Bygger har begge dele.
