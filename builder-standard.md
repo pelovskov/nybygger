@@ -1,9 +1,9 @@
 # Builder-standard
 
 **Fælles specifikation for værktøjskassen**
-Version 1.2 · september 2026
+Version 1.3 · oktober 2026
 
-Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.4).
+Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.5).
 Når noget er i tvivl, er det referencefilen der gælder.
 
 ---
@@ -24,12 +24,13 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
 | Vejledningsbygger | trin-for-trin vejledning | afklares |
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
+| Etiket · Påsætter | sætter metadata og hjem-knap på færdige filer, der ikke er lavet i en bygger | vælges pr. fil |
 
-Bragt i overensstemmelse med standarden: Sidebygger (v1.4) og Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2).
+Bragt i overensstemmelse med standarden: Sidebygger (v1.5, følger 1.3), Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2) og Etiket · Påsætter (v2.0, følger 1.3, se 5.7).
 
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
-Vejledningsbygger og PWA · Bygger afviger bevidst på enkelte punkter, fordi de ikke laver indhold på samme måde som de andre. Afvigelserne skal stå i appens egen beskrivelse.
+Vejledningsbygger, PWA · Bygger og Etiket · Påsætter afviger bevidst på enkelte punkter, fordi de ikke laver indhold på samme måde som de andre. Afvigelserne skal stå i appens egen beskrivelse.
 
 Ældre filer, der er lavet før en bygger blev bragt i overensstemmelse med standarden, laves om i den nye bygger. Byggerne skal ikke bære rundt på kode til at forstå gamle formater.
 
@@ -258,7 +259,7 @@ Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stav
 
 Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". Status ved indlæsning nævner rettelsen. Står der et helt ukendt navn, vises det som ekstra valg markeret "ikke på listen", så det ikke går tabt, men kan rettes.
 
-**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Forslaget kan overskrives.
+**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Etiket · Påsætter bruger et ord ud fra filens dc.type: Text → side, Image → billede, Sound → lyd, MovingImage → video, InteractiveResource → interaktiv, Collection → samling, Event → begivenhed. Forslaget kan overskrives.
 
 **dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje" og "Steder, institutioner og mennesker") indsætter serien som andet emneord.
 
@@ -315,7 +316,15 @@ Hver genereret fil indeholder en JSON-blok, der gør filen redigerbar igen:
 - **Altid vist**
 - **Aldrig vist**
 
-Knaptekst (standard "Hjem") og adresse (standard `index.html`) kan ændres. En adresse i URL'en (`?hjem=…`) går forud for den indbyggede. I forhåndsvisningen vises knappen altid.
+Knaptekst (standard "Hjem") og adresse (standard `index.html`) kan ændres. Ligger filen i en undermappe i forhold til forsiden, er adressen `../index.html`. En adresse i URL'en (`?hjem=…`) går forud for den indbyggede. I forhåndsvisningen vises knappen altid.
+
+Regler for knappens kode (referencen er Sidebygger 1.5):
+
+- **Sikker adresse.** En adresse fra `?hjem=` (eller `?home=`) bruges kun, hvis den ikke begynder med `javascript:`, `data:` eller `vbscript:`. Ellers kunne et link til filen gøre hjem-knappen til et farligt link.
+- **Adresser i scriptet** skrives som JSON, hvor `<` er erstattet af `\u003c`, så en adresse aldrig kan afslutte scriptet.
+- **Kom man fra forsiden?** Knappen vises, hvis man kom fra en side i samme mappe, eller fra selve den side, knappen peger på (så undermapper også virker). `index.html` og en mappeadresse, der ender på `/`, regnes for det samme.
+- **Ligger forsiden der?** Online spørges der efter forsiden med `HEAD`. Svarer serveren 405 (HEAD ikke tilladt), prøves der med en almindelig forespørgsel.
+- **Ren kopi.** Knappens synlighed er noget, siden finder ud af, når den åbnes. Den må aldrig blive gemt fast. **Gem filen** fjerner derfor `show` før gem (se 5.4), og kode, der sættes ind i fremmede filer (5.7), venter med at vise knappen til siden er indlæst, så sider, der gemmer sig selv, ikke får knappen med.
 
 ### 5.4 Nederst i filen
 
@@ -350,6 +359,34 @@ function slugify(s, fallback){
 Eksempel: "Skomagerværkstedet på Algade" → `skomagervaerkstedet-paa-algade.html`.
 
 Filer, der er lavet før version 1.2, beholder deres filnavn og identifikator. Reglen gælder kun nye filer, og en gammel identifikator overskrives ikke, når filen indlæses igen.
+
+### 5.7 Etiket på filer, der ikke er lavet i en bygger
+
+Nogle filer er lavet på anden vis (infografikker, slides, dashboards, ældre albums). De kan komme med på søgesiden og ind i en samling med **Etiket · Påsætter**. Værktøjet tolker ikke filen som HTML og skriver den ikke ud igen. Det indsætter kun afgrænsede tekstblokke, og resten af filen kopieres uændret, byte for byte.
+
+**I `<head>`**, lige efter charset-linjen:
+
+- Dublin Core som `<link rel="schema.DC">` + `<meta name="DC.xxx">`, ét meta-tag pr. emneord, som i afsnit 4.
+- En datablok med `format: "etiket"`:
+
+```html
+<script type="application/json" id="builder-source-data">
+{ "format": "etiket",
+  "builderVersion": 2,
+  "metadataniveau": "let",
+  "vaerktoej": "Etiket · Påsætter 2.0",
+  "paasat": "2026-10-05",
+  "dublinCore": { … } }
+</script>
+```
+
+Har filen Dublin Core i forvejen, læses felterne ind og skrives ud igen sammen med rettelserne, så intet går tabt. Udgiverværdier rettes efter 4.1, og en gammel identifikator overskrives ikke. Søgesiden skal kunne læse etiket-filer på samme måde som filer fra byggerne.
+
+**Hjem-knap (valgfri)** efter 5.3, med Automatisk eller Altid vist, øverst på siden eller svævende i øverste venstre hjørne. Blokken står mellem kommentarerne `<!-- HJEMKNAP -->` og `<!-- HJEMKNAP SLUT -->` (CSS i `<head>`, knap og script lige efter `<body>`), så den kan skiftes ud eller fjernes igen ved næste kørsel. Klasser og id'er har forstavelsen `hjemknap-`, så de ikke støder sammen med sidens egne. Øverst på siden arver knappen sidens tekstfarve; svævende har den sin egen lyse baggrund.
+
+**Alt, der indsættes, er ren ASCII.** Tegn uden for ASCII skrives som `&#NNN;` i HTML og `\uXXXX` i JSON, så blokkene er rigtige, uanset hvilket tegnsæt filen er gemt i.
+
+**Filer fra byggerne** (en datablok med et andet `format`) kan ikke vælges i Etiket · Påsætter. De rettes i deres egen bygger. Filer med en hjem-knap, der er sat ind i hånden, får ikke en til.
 
 ---
 
@@ -458,7 +495,7 @@ Regler:
 - [ ] DC-meta i `<head>` og "Om denne fil"-panel
 - [ ] `builder-source-data` med format, builderVersion og theme
 - [ ] Temaet som CSS-variabler i `:root`, med mørk tilstand
-- [ ] Hjem-knap med Automatisk / Altid / Aldrig
+- [ ] Hjem-knap med Automatisk / Altid / Aldrig, med sikker `?hjem=` og undermappe-tjek (5.3)
 - [ ] "Gem filen" gemmer en ren kopi
 - [ ] "Gem filen" og "Om denne fil" kan slås fra
 - [ ] Skriftstørrelse og op-pil (på lange sider)
@@ -555,6 +592,12 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 ## 12. Ændringslog
 
+**Version 1.3 — oktober 2026.**
+- Hjem-knap (5.3): adresser fra `?hjem=` afvises, hvis de begynder med `javascript:`, `data:` eller `vbscript:`. Adresser skrives sikkert ind i scriptet. Knappen vises også, når man kom fra selve forsiden i en anden mappe (`../index.html`). HEAD, der afvises med 405, prøves igen. Knappens synlighed må aldrig blive gemt fast.
+- Sidebygger v1.5 har fået rettelserne og er fortsat referenceimplementering. Outputformatet er uændret (`builderVersion` 1).
+- Nyt afsnit 5.7 om Etiket · Påsætter: metadata og hjem-knap på filer, der ikke er lavet i en bygger. Etiket · Påsætter v2.0 følger standarden.
+- dc.identifier: typeord til Etiket · Påsætter (interaktiv, samling, begivenhed m.fl.) i 4.1.
+
 **Version 1.2 — september 2026.**
 - Slug: æ→ae, ø→oe, å→aa, før accenterne fjernes. Gælder filnavn og titelslug i dc.identifier. Gamle filer beholder deres navn.
 - "Gem filen": pilleform (999px) og kursiv linje under knappen er nu fastlagt. Rettet i Sidebygger 1.4.
@@ -590,5 +633,6 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 ## 13. Åbne punkter
 
 **Afklares, når byggeren tages op:**
+- Hjem-knappens rettelser fra 1.3 skal kopieres fra Sidebygger 1.5 til de øvrige byggere, begyndende med Album · Bygger.
 - dc.type for Henvisning, Vejledning og PWA.
 - Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger og Album · Bygger har begge dele.

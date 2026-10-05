@@ -117,7 +117,7 @@
 
 <div class="topbar">
   <h1>Sidebygger</h1>
-  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.4</span>
+  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.5</span>
 </div>
 
 <div class="layout">
@@ -351,7 +351,7 @@
         <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem"></div>
         <div><input type="text" id="homeUrl" placeholder="index.html"></div>
       </div>
-      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder. Ligger siden i en undermappe i forhold til forsiden, skal adressen være <strong>../index.html</strong>.</div>
     </div>
 
     <div class="field">
@@ -615,6 +615,12 @@ function fileToDataURL(file){
     reader.onload = () => resolve(reader.result);
     reader.readAsDataURL(file);
   });
+}
+
+/* Værdier der skrives ind i et script-element i outputfilen: JSON uden "<",
+   så en adresse med et afsluttende script-mærke ikke kan bryde scriptet */
+function jsonIScript(v){
+  return JSON.stringify(v).replace(/</g, '\\u003c');
 }
 
 function escapeHtml(str){
@@ -1116,11 +1122,14 @@ function buildPageHTML(s, isPreview){
 + '  var bar = document.getElementById("topbar");\n'
 + '  if (bar){\n'
 + '    var link = document.getElementById("homeBtn");\n'
-+ '    var mode = ' + JSON.stringify(homeMode) + ';\n'
-+ '    var target = ' + JSON.stringify(homeUrl) + ';\n'
++ '    var mode = ' + jsonIScript(homeMode) + ';\n'
++ '    var target = ' + jsonIScript(homeUrl) + ';\n'
 + '    function show(){ bar.classList.add("show"); }\n'
++ '    function sikker(u){ return !!u && !/^\\s*(javascript|data|vbscript):/i.test(u); }\n'
++ '    function udenIndex(p){ return p.replace(/index\\.html?$/i, ""); }\n'
 + '    var fromUrl = null;\n'
 + '    try { var p = new URLSearchParams(location.search); fromUrl = p.get("hjem") || p.get("home"); } catch(e){}\n'
++ '    if (!sikker(fromUrl)) fromUrl = null;\n'
 + '    if (fromUrl){ target = fromUrl; }\n'
 + '    link.setAttribute("href", target);\n'
 + '    if (mode === "always" || fromUrl){ show(); }\n'
@@ -1136,15 +1145,20 @@ function buildPageHTML(s, isPreview){
 + '        if (!shown){\n'
 + '          try {\n'
 + '            if (document.referrer){\n'
-+ '              var ref = new URL(document.referrer), here = new URL(location.href);\n'
++ '              var ref = new URL(document.referrer), here = new URL(location.href), maal = new URL(target, location.href);\n'
 + '              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));\n'
 + '              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));\n'
-+ '              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }\n'
++ '              if (ref.origin === here.origin && ref.href !== here.href && (refDir === hereDir || udenIndex(ref.pathname) === udenIndex(maal.pathname))){ show(); shown = true; }\n'
 + '            }\n'
 + '          } catch(e){}\n'
 + '        }\n'
 + '        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){\n'
-+ '          try { fetch(target, {method:"HEAD"}).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}\n'
++ '          try {\n'
++ '            fetch(target, {method:"HEAD", cache:"no-store"}).then(function(r){\n'
++ '              if (r && r.ok) show();\n'
++ '              else if (r && r.status === 405) return fetch(target).then(function(r2){ if (r2 && r2.ok) show(); });\n'
++ '            }).catch(function(){});\n'
++ '          } catch(e){}\n'
 + '        }\n'
 + '      }\n'
 + '    }\n'

@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etiket · Påsætter</title>
+<style>
+/* ---------------------------------------------------------------
+   Etiket · Påsætter — version 2.0 (okt. 2026)
+   Følger Builder-standard 1.3, hvor den passer på et værktøj,
+   der arbejder på andres filer (se afvigelserne nederst på siden).
+
+   Sætter lette metadata på eksisterende HTML-filer, så de kan
+   komme med på søgesiden, og kan desuden sætte en hjem-knap på.
+
+   Vigtigt: filerne bliver IKKE tolket som HTML og skrevet ud igen.
+   Der bliver kun indsat (og evt. fjernet) små tekstblokke. Resten
+   af filen bliver kopieret uændret, byte for byte.
+   --------------------------------------------------------------- */
+html{font-size:100%}
+html[data-tekst="stor"]{font-size:112.5%}
+html[data-tekst="storst"]{font-size:125%}
+
+:root{
+  /* Builder-standard, afsnit 3 */
+  --paper:#EDE7D8;
+  --paper-dim:#E2DBC8;
+  --ink:#211E19;
+  --rust:#9A4630;
+  --rust-dark:#82392A;
+  --moss:#47543C;
+  --hint:#5F5A4B;
+  --line:#cbc2a8;
+  --surface:#FBF8EF;
+  --ok:#1F5D3A;
+  --advarsel:#7A4A00;
+  --serif:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:1rem;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+a{color:var(--rust)}
+:focus-visible{outline:2px solid var(--rust);outline-offset:2px}
+
+/* Topbar */
+header{border-bottom:1px solid var(--line);background:var(--paper-dim)}
+.topbar{max-width:1500px;margin:0 auto;padding:1.1rem 1.25rem;
+  display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-family:var(--serif);font-size:25px;line-height:1.2;margin:0 0 .15rem;font-weight:700}
+.sub{color:var(--hint);font-size:.9rem;margin:0;max-width:70ch}
+
+.tekststr{display:flex;align-items:center;gap:.5rem;flex:0 0 auto}
+.tekststr .lbl{font-size:.85rem;color:var(--hint)}
+.tekststr button{
+  font-family:var(--serif);background:var(--surface);color:var(--ink);
+  border:2px solid var(--line);border-radius:8px;
+  min-width:44px;min-height:44px;padding:0 .55rem;cursor:pointer;line-height:1;
+}
+.tekststr button:nth-of-type(1){font-size:1rem}
+.tekststr button:nth-of-type(2){font-size:1.2rem}
+.tekststr button:nth-of-type(3){font-size:1.4rem}
+.tekststr button:hover{border-color:var(--rust)}
+.tekststr button[aria-pressed="true"]{background:var(--rust);border-color:var(--rust);color:#FDF8EE}
+
+main{max-width:1500px;margin:0 auto;padding:1.25rem 1.25rem 3rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:1.25rem;margin-bottom:1.25rem}
+.panel h2{font-family:var(--serif);font-size:1.3rem;margin:0 0 .8rem;font-weight:700}
+.panel[hidden]{display:none}
+
+.knapraekke{display:flex;gap:.7rem;flex-wrap:wrap}
+button.stor{
+  font-family:inherit;font-size:17px;font-weight:700;
+  background:var(--rust);color:#FDF8EE;border:2px solid var(--rust);
+  border-radius:8px;min-height:52px;padding:.6rem 1.3rem;cursor:pointer;
+}
+button.stor:hover{background:var(--rust-dark);border-color:var(--rust-dark)}
+button.stor[disabled]{background:#B4A795;border-color:#B4A795;color:#fff;cursor:not-allowed}
+button.rolig,button.lille{
+  font-family:inherit;background:#fff;color:var(--ink);border:2px solid var(--line);
+  border-radius:8px;cursor:pointer;
+}
+button.rolig{font-size:15.5px;min-height:48px;padding:.5rem 1rem}
+button.lille{font-size:14.5px;min-height:44px;padding:.3rem .8rem}
+button.rolig:hover,button.lille:hover{border-color:var(--rust)}
+
+.felter{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:flex-start}
+.felt-gruppe{flex:1 1 15rem;min-width:0}
+label.felt{
+  display:block;font-size:13.5px;font-weight:700;color:var(--moss);
+  text-transform:uppercase;letter-spacing:.09em;margin:0 0 .3rem;
+}
+input.felt,select.felt,textarea.felt{
+  font-family:inherit;font-size:15.5px;width:100%;
+  padding:.55rem .7rem;border:2px solid var(--line);border-radius:8px;
+  background:#fff;color:var(--ink);min-height:48px;
+}
+.felt-hint{font-size:13.5px;line-height:1.55;color:var(--hint);margin:.3rem 0 0}
+
+#dropzone{
+  border:3px dashed var(--line);border-radius:10px;
+  padding:1.1rem;text-align:center;color:var(--hint);font-size:15px;margin-top:.8rem;
+}
+#dropzone.over{border-color:var(--rust);background:var(--paper-dim);color:var(--ink)}
+.hint{font-size:13.5px;line-height:1.55;color:var(--hint);margin:.6rem 0 0;max-width:75ch}
+
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{
+  text-align:left;font-size:13.5px;font-weight:700;color:var(--moss);
+  text-transform:uppercase;letter-spacing:.09em;
+  padding:.4rem .5rem;border-bottom:2px solid var(--line);vertical-align:bottom;
+}
+td{padding:.5rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr.zebra{background:#F4EFE3}
+tr.laast{color:var(--hint)}
+tr.laast input,tr.laast select,tr.laast textarea{background:var(--paper);color:var(--hint)}
+td input,td select,td textarea{
+  font-family:inherit;font-size:15px;width:100%;
+  padding:.4rem .5rem;border:2px solid var(--line);border-radius:6px;
+  background:#fff;color:var(--ink);min-height:44px;
+}
+td textarea{min-height:2.9rem;line-height:1.4;resize:vertical}
+td.med{width:3.5rem;text-align:center}
+td.med input{width:26px;height:26px;min-height:26px;accent-color:var(--rust)}
+.filnavn{font-size:14.5px;word-break:break-word;line-height:1.35;font-weight:600}
+.maerke{display:block;font-weight:400;font-size:13.5px;margin-top:.25rem;color:var(--hint)}
+.maerke.advarsel{color:var(--advarsel)}
+.maerke.ok{color:var(--ok)}
+.col-titel{width:22%}
+.col-besk{width:30%}
+.col-type{width:12rem}
+.col-dato{width:9rem}
+
+@media(max-width:900px){
+  table,thead,tbody,tr,td{display:block;width:100%}
+  thead{display:none}
+  tr{border:2px solid var(--line);border-radius:8px;margin-bottom:1rem;padding:.6rem;background:#fff}
+  tr.zebra{background:#F4EFE3}
+  td{border-bottom:0;padding:.4rem 0}
+  td::before{content:attr(data-etiket);display:block;font-size:13.5px;font-weight:700;color:var(--moss);margin-bottom:.2rem}
+  td.med{width:auto;text-align:left;display:flex;gap:.6rem;align-items:center}
+  td.med::before{margin-bottom:0}
+}
+
+.status{margin-top:1rem;font-size:14.5px}
+.status .ok{color:var(--ok);font-weight:700}
+.status .advarsel{color:var(--advarsel)}
+.status .fejl{color:var(--rust);font-weight:700}
+
+.valg{margin:.2rem 0 1rem;border:0;padding:0}
+.valg legend{font-size:13.5px;font-weight:700;color:var(--moss);text-transform:uppercase;letter-spacing:.09em;padding:0;margin-bottom:.2rem}
+.valg label{display:flex;gap:.6rem;align-items:flex-start;margin:.45rem 0;cursor:pointer;max-width:75ch;font-size:15.5px}
+.valg input{width:24px;height:24px;margin-top:.15rem;accent-color:var(--rust);flex:0 0 auto}
+.valg .forklaring{display:block;font-size:13.5px;color:var(--hint)}
+
+.hjem-gitter{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+@media(max-width:900px){.hjem-gitter{grid-template-columns:1fr}}
+.proeve{border:1px solid var(--line);border-radius:8px;background:#fff;min-height:7.5rem;position:relative;overflow:hidden}
+.proeve .proeve-side{padding:.9rem 1rem;color:#3A362E;font-family:var(--serif)}
+.proeve .proeve-side b{display:block;font-size:1.15rem;color:#211E19;margin-bottom:.2rem}
+.proeve-knap{
+  display:inline-flex;align-items:center;gap:8px;min-height:44px;
+  padding:8px 16px 8px 12px;border-radius:999px;border:2px solid currentColor;
+  font:700 16px/1.2 var(--sans);color:#211E19;background:transparent;
+}
+.proeve-knap svg{width:18px;height:18px}
+.proeve.svaev .proeve-knap{position:absolute;top:10px;left:10px;background:#FBF8EF;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.proeve.svaev .proeve-side{padding-top:4rem}
+.proeve.flow .proeve-knap{margin:.8rem 0 0 1rem}
+.proeve.skjult .proeve-knap{display:none}
+.proeve .proeve-note{font-size:13px;color:var(--hint);padding:0 1rem .7rem;font-family:var(--sans)}
+
+details{margin-top:.9rem;font-size:14.5px}
+summary{cursor:pointer;color:var(--rust);min-height:44px;display:flex;align-items:center}
+details ul{margin:.4rem 0 0;padding-left:1.2rem;color:var(--hint)}
+details li{margin:.25rem 0;word-break:break-word}
+
+footer{max-width:1500px;margin:0 auto;padding:0 1.25rem 3rem;color:var(--hint);font-size:14px;line-height:1.7}
+footer p{max-width:80ch}
+.visuelt-skjult{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+</style>
+</head>
+<body>
+
+<header>
+<div class="topbar">
+  <div>
+    <h1>Etiket · Påsætter</h1>
+    <p class="sub">Sætter metadata og en hjem-knap på HTML-filer, du allerede har liggende,
+    så de kan komme med på søgesiden og i din samling · kører lokalt, ingen server · version 2.0</p>
+  </div>
+  <div class="tekststr" role="group" aria-label="Tekststørrelse">
+    <span class="lbl" aria-hidden="true">Tekst</span>
+    <button type="button" data-str="normal" aria-pressed="true" aria-label="Normal tekststørrelse">A</button>
+    <button type="button" data-str="stor" aria-pressed="false" aria-label="Større tekst">A+</button>
+    <button type="button" data-str="storst" aria-pressed="false" aria-label="Størst tekst">A++</button>
+  </div>
+</div>
+</header>
+
+<main>
+
+  <section class="panel" aria-labelledby="h-mappe">
+    <h2 id="h-mappe">1. Find filerne</h2>
+    <div class="knapraekke">
+      <button type="button" class="stor" id="vaelgMappe">Vælg mappe</button>
+      <button type="button" class="rolig" id="vaelgFiler">Vælg enkelte filer i stedet</button>
+    </div>
+    <div id="dropzone">eller træk mappen herned</div>
+    <p class="hint" id="mappeHint"></p>
+  </section>
+
+  <section class="panel" id="p-faelles" aria-labelledby="h-faelles" hidden>
+    <h2 id="h-faelles">2. Det, der er fælles for alle filerne</h2>
+    <div class="felter">
+      <div class="felt-gruppe">
+        <label class="felt" for="udgiver">Udgiver / område</label>
+        <select class="felt" id="udgiver"></select>
+        <p class="felt-hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset.
+        Vælger du ikke noget, bliver det stående, der allerede står i filen.</p>
+      </div>
+      <div class="felt-gruppe">
+        <label class="felt" for="ophav">Ophav / skaber</label>
+        <input class="felt" id="ophav" type="text" placeholder="dit navn">
+        <p class="felt-hint">dc.creator — den der har skabt materialet.</p>
+      </div>
+    </div>
+    <div class="felter" style="margin-top:1rem">
+      <div class="felt-gruppe">
+        <label class="felt" for="emne">Emne / nøgleord</label>
+        <input class="felt" id="emne" type="text" placeholder="fx slides; undervisning">
+        <p class="felt-hint">dc.subject — adskil med semikolon. Udgiveren bliver sat ind som
+        første emneord af sig selv.</p>
+      </div>
+      <div class="felt-gruppe">
+        <label class="felt" for="rettigheder">Rettigheder</label>
+        <input class="felt" id="rettigheder" type="text" placeholder="fx Må gengives med kildeangivelse.">
+        <p class="felt-hint">dc.rights — ophavsret og vilkår for brug.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-tabel" aria-labelledby="h-tabel" hidden>
+    <h2 id="h-tabel">3. En linje pr. fil</h2>
+    <div class="knapraekke" style="margin-bottom:.9rem">
+      <button type="button" class="lille" id="saetTypeAlle">Sæt samme type på alle</button>
+      <button type="button" class="lille" id="saetDatoAlle">Sæt samme dato på alle</button>
+      <button type="button" class="lille" id="fravaelgAlle">Fravælg alle</button>
+      <button type="button" class="lille" id="tilvaelgAlle">Vælg alle</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Med</th>
+          <th scope="col">Fil</th>
+          <th scope="col" class="col-titel">Titel</th>
+          <th scope="col" class="col-besk">Beskrivelse</th>
+          <th scope="col" class="col-type">Type</th>
+          <th scope="col" class="col-dato">Dato</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="hint">Titel, beskrivelse og dato er hentet fra filen selv. Ret det, der er
+    forkert, og lad resten stå. Filer, der er lavet med en af byggerne, kan ikke vælges her,
+    for de har allerede både metadata og hjem-knap.</p>
+  </section>
+
+  <section class="panel" id="p-hjem" aria-labelledby="h-hjem" hidden>
+    <h2 id="h-hjem">4. Hjem-knap</h2>
+    <div class="hjem-gitter">
+      <div>
+        <fieldset class="valg">
+          <legend>Hjem-knappen</legend>
+          <label><input type="radio" name="hjemvalg" value="auto" checked>
+            <span>Automatisk
+            <span class="forklaring">Knappen vises kun, når filen er en del af din samling: hvis den
+            er åbnet som app, hvis man kom fra forsiden, eller hvis der ligger en forside ved siden
+            af på nettet. Åbnes filen alene, bliver knappen væk. Anbefales.</span></span></label>
+          <label><input type="radio" name="hjemvalg" value="always">
+            <span>Altid vist
+            <span class="forklaring">Godt til USB-stik og filer, der åbnes direkte fra computeren.</span></span></label>
+          <label><input type="radio" name="hjemvalg" value="uaendret">
+            <span>Rør ikke hjem-knappen
+            <span class="forklaring">Kun metadata bliver sat på. En hjem-knap, der allerede er der, bliver stående.</span></span></label>
+          <label><input type="radio" name="hjemvalg" value="fjern">
+            <span>Fjern hjem-knappen
+            <span class="forklaring">Fjerner en hjem-knap, som dette værktøj har sat på tidligere.</span></span></label>
+        </fieldset>
+        <fieldset class="valg" id="placeringValg">
+          <legend>Hvor knappen står</legend>
+          <label><input type="radio" name="placering" value="flow" checked>
+            <span>Øverst på siden
+            <span class="forklaring">Knappen står over sidens indhold og skubber det lidt ned.</span></span></label>
+          <label><input type="radio" name="placering" value="svaev">
+            <span>Svævende i øverste venstre hjørne
+            <span class="forklaring">Rører ikke sidens layout. Godt til dashboards og apps, der fylder hele skærmen.</span></span></label>
+        </fieldset>
+      </div>
+      <div>
+        <div class="felter">
+          <div class="felt-gruppe">
+            <label class="felt" for="hjemTekst">Knaptekst</label>
+            <input class="felt" id="hjemTekst" type="text" value="Hjem">
+          </div>
+          <div class="felt-gruppe">
+            <label class="felt" for="hjemHref">Forsidens adresse</label>
+            <input class="felt" id="hjemHref" type="text" value="index.html">
+          </div>
+        </div>
+        <p class="felt-hint">Ligger filerne i en undermappe i forhold til forsiden, skal der stå
+        <strong>../index.html</strong>. En adresse i linket fra forsiden (<strong>?hjem=…</strong>)
+        går altid forud for den, der står her.</p>
+        <p class="felt-hint" style="margin-top:.9rem"><strong>Sådan kommer den til at se ud:</strong></p>
+        <div class="proeve flow" id="proeve" aria-hidden="true">
+          <span class="proeve-knap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg><span id="proeveTekst">Hjem</span></span>
+          <div class="proeve-side"><b>Sidens egen overskrift</b>Sidens indhold fortsætter her …</div>
+          <div class="proeve-note" id="proeveNote">Øverst på siden overtager knappen sidens egen tekstfarve.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-gem" aria-labelledby="h-gem" hidden>
+    <h2 id="h-gem">5. Sæt det på</h2>
+    <fieldset class="valg">
+      <legend>Hvor filerne skal gemmes</legend>
+      <label>
+        <input type="radio" name="gemmaade" value="kopi" checked>
+        <span>Læg kopier i undermappen <strong>med-metadata</strong>
+        <span class="forklaring">Dine oprindelige filer bliver ikke rørt. Anbefales.</span></span>
+      </label>
+      <label>
+        <input type="radio" name="gemmaade" value="overskriv">
+        <span>Skriv direkte i de oprindelige filer
+        <span class="forklaring">Kan ikke fortrydes. Vælg kun dette, hvis du har en kopi et andet sted
+        (husk 3-2-1: tre kopier, to slags lager, én et andet sted).</span></span>
+      </label>
+    </fieldset>
+    <button type="button" class="stor" id="gem">Sæt det på de valgte filer</button>
+    <p class="hint" id="gemHint"></p>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+    <div id="resultatliste"></div>
+  </section>
+
+</main>
+
+<footer>
+<p>Metadata bliver skrevet ind i <em>head</em>-delen af filen i samme format, som
+byggerne bruger: Dublin Core som <em>meta</em>-felter plus en lille datablok. Står der
+Dublin Core i filen i forvejen, bliver felterne læst ind og skrevet ud igen sammen med dine
+rettelser, så intet går tabt. Hjem-knappen er en lille afgrænset blok lige efter
+<em>body</em>, mærket HJEMKNAP, så den kan rettes eller fjernes igen senere. Resten af filen
+bliver kopieret uændret.</p>
+<p>Afvigelser fra Builder-standard 1.3: værktøjet arbejder på mange færdige filer på én gang,
+så det har en tabel i stedet for formular og forhåndsvisning, ingen temaer og hverken
+<em>Gem filen</em> eller <em>Om denne fil</em> i filerne. Udgiverlisten, emneord med semikolon,
+identifikator og filnavnsreglen følger standarden.</p>
+</footer>
+
+<script>
+/* =========================================================================
+   KERNE START — alt herfra og til KERNE SLUT virker uden brugerflade
+   ========================================================================= */
+
+/* Builder-standard 4.1 — kopieres uændret */
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+const DC_FIELDS = [
+  "title","creator","subject","description","publisher","contributor",
+  "date","type","format","identifier","source","language","relation",
+  "coverage","rights"
+];
+
+/* Builder-standard 4: Text, Image, Sound, MovingImage, InteractiveResource, Collection, Event */
+const TYPER = [
+  ["Text",                "Tekst, artikel, dokument"],
+  ["Image",               "Billeder"],
+  ["Sound",               "Lyd"],
+  ["MovingImage",         "Video"],
+  ["InteractiveResource", "Infografik, slides, interaktiv side"],
+  ["Collection",          "Oversigt, samling, linkside"],
+  ["Event",               "Begivenhed"]
+];
+const STANDARD_TYPE = "InteractiveResource";
+
+/* Det korte, faste ord i dc.identifier (Builder-standard 4.1) */
+const TYPEORD = {
+  Text:"side", Image:"billede", Sound:"lyd", MovingImage:"video",
+  InteractiveResource:"interaktiv", Collection:"samling", Event:"begivenhed"
+};
+
+const VAERKTOEJ = "Etiket · Påsætter 2.0";
+const MAERKE_START = "<!-- HJEMKNAP -->";
+const MAERKE_SLUT  = "<!-- HJEMKNAP SLUT -->";
+
+/* Builder-standard 5.6 */
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+/* windows-1252 giver præcis ét tegn pr. byte. Derfor er en position
+   i teksten også en position i filen, uanset filens tegnsæt. */
+const ET_TEGN_PR_BYTE = new TextDecoder("windows-1252");
+
+function somTekst(bytes){
+  try{ return new TextDecoder("utf-8", {fatal:true}).decode(bytes); }
+  catch(e){ return ET_TEGN_PR_BYTE.decode(bytes); }
+}
+
+const NAVNGIVNE = {
+  amp:"&", lt:"<", gt:">", quot:'"', apos:"'", nbsp:" ",
+  aelig:"æ", oslash:"ø", aring:"å", AElig:"Æ", Oslash:"Ø", Aring:"Å",
+  eacute:"é", uuml:"ü", ouml:"ö", auml:"ä", ndash:"–", mdash:"—", hellip:"…"
+};
+function afkodEntiteter(s){
+  return String(s || "").replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (hel, k) => {
+    if (k[0] === "#"){
+      const n = (k[1] === "x" || k[1] === "X") ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10);
+      try{ return String.fromCodePoint(n); }catch(e){ return hel; }
+    }
+    return Object.prototype.hasOwnProperty.call(NAVNGIVNE, k) ? NAVNGIVNE[k] : hel;
+  });
+}
+function reneTekst(s){
+  return afkodEntiteter(String(s || "").replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ").trim();
+}
+
+/* Alt uden for ASCII skrives som &#NNN; — så er blokkene rigtige,
+   uanset hvilket tegnsæt den oprindelige fil er gemt i. */
+function escAscii(s){
+  let ud = "";
+  for (const c of String(s == null ? "" : s)){
+    const n = c.codePointAt(0);
+    if (c === "&") ud += "&amp;";
+    else if (c === "<") ud += "&lt;";
+    else if (c === ">") ud += "&gt;";
+    else if (c === '"') ud += "&quot;";
+    else if (n < 32) ud += " ";
+    else if (n > 126) ud += "&#" + n + ";";
+    else ud += c;
+  }
+  return ud;
+}
+function jsonKunAscii(obj){
+  return JSON.stringify(obj)
+    .replace(/[\u0080-\uFFFF]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4,"0"))
+    .replace(/<\/script/gi, "<\\/script")
+    .replace(/<!--/g, "<\\u0021--");
+}
+
+function attrAf(tag, navn){
+  const re = new RegExp("\\b" + navn + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')", "i");
+  const m = re.exec(tag);
+  if (!m) return null;
+  return afkodEntiteter(m[1] !== undefined ? m[1] : m[2]);
+}
+
+function datoAf(ms){
+  const d = new Date(ms);
+  if (isNaN(d)) return "";
+  return d.getFullYear() + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    String(d.getDate()).padStart(2,"0");
+}
+
+/* Builder-standard 4.1: gamle udgiverværdier rettes til den gældende */
+function normUdgiver(v){
+  const raa = String(v || "").trim();
+  if (!raa) return {vaerdi:"", kendt:true, rettet:false};
+  let s = raa.replace(/[\u2012\u2013\u2014\u2015]/g, "-").replace(/\s+/g, " ");
+  const lille = s.toLowerCase();
+  if (lille === "røde kors roskilde") s = "Røde Kors";
+  else if (lille === "sfb" || lille === "syd for banen") s = "Syd for Banen - Lokalhistorisk Forening";
+  const hit = PUBLISHERS.find(p => p.name.toLowerCase() === s.toLowerCase());
+  if (hit) return {vaerdi:hit.name, kendt:true, rettet:hit.name !== raa};
+  return {vaerdi:raa, kendt:false, rettet:false};
+}
+function erUdgivernavn(e){
+  return !!e && normUdgiver(e).kendt && normUdgiver(e).vaerdi !== "";
+}
+
+function delEmner(s){
+  s = String(s || "");
+  const dele = s.indexOf(";") >= 0 ? s.split(";") : s.split(",");
+  return dele.map(e => e.trim()).filter(Boolean);
+}
+
+/* Udvider et tag-område til hele linjen, hvis tagget står alene på linjen */
+function helLinje(S, a, b){
+  let a2 = a;
+  while (a2 > 0 && (S[a2-1] === " " || S[a2-1] === "\t")) a2--;
+  if (a2 === 0 || S[a2-1] === "\n"){
+    let b2 = b;
+    while (b2 < S.length && (S[b2] === " " || S[b2] === "\t")) b2++;
+    if (S[b2] === "\r") b2++;
+    if (S[b2] === "\n"){ return [a2, b2 + 1]; }
+  }
+  return [a, b];
+}
+
+/* -------------------------------------------------------------------------
+   Analysér filens begyndelse. bytes = filens første del (eller hele filen).
+   ------------------------------------------------------------------------- */
+function analyserBytes(navn, bytes, lastModified){
+  const S = ET_TEGN_PR_BYTE.decode(bytes);
+  const tekstAf = (a, b) => somTekst(bytes.subarray(a, b));
+
+  const res = {
+    navn, headPos:-1, bodyPos:-1,
+    fjernEtiket:[], fjernDC:[], fjernHjem:[],
+    gammelEtiket:null, bygger:null, dcFil:{}, harDC:false,
+    hjem:null, fremmedHjem:false,
+    udgiverIFil:"", titel:"", beskrivelse:"", type:STANDARD_TYPE, dato:"",
+    gamleDC:{}
+  };
+
+  /* Hvor slutter head? */
+  const mHeadSlut = /<\/head\s*>/i.exec(S);
+  const headSlut = mHeadSlut ? mHeadSlut.index : -1;
+
+  /* Indsætningspunkt i head: efter <head>, og efter charset-meta hvis det står lige efter */
+  const mHead = /<head\b[^>]*>/i.exec(S);
+  if (mHead){
+    let p = mHead.index + mHead[0].length;
+    const efter = S.slice(p, p + 600);
+    const mCs = /<meta[^>]*charset[^>]*>/i.exec(efter);
+    if (mCs) p += mCs.index + mCs[0].length;
+    res.headPos = p;
+  } else {
+    const mHtml = /<html\b[^>]*>/i.exec(S);
+    if (mHtml) res.headPos = mHtml.index + mHtml[0].length;
+    else {
+      const mDoc = /<!DOCTYPE[^>]*>/i.exec(S);
+      res.headPos = mDoc ? mDoc.index + mDoc[0].length : 0;
+    }
+  }
+
+  /* <body>-tagget, søgt efter </head> så vi ikke rammer tekst i scripts i head */
+  const bodyRe = /<body\b[^>]*>/ig;
+  bodyRe.lastIndex = headSlut >= 0 ? headSlut : 0;
+  const mBody = bodyRe.exec(S);
+  if (mBody) res.bodyPos = mBody.index + mBody[0].length;
+
+  /* Nye blokke sættes ind i starten af næste linje, så der ikke hober
+     sig tomme linjer op, når filen behandles flere gange */
+  const efterLinjeskift = p => {
+    if (p < 0) return p;
+    if (S[p] === "\r" && S[p+1] === "\n") return p + 2;
+    if (S[p] === "\n") return p + 1;
+    return p;
+  };
+  res.headPos = efterLinjeskift(res.headPos);
+  res.bodyPos = efterLinjeskift(res.bodyPos);
+
+  /* Datablokke */
+  const srcRe = /<script\b[^>]*\bid\s*=\s*["']builder-source-data["'][^>]*>([\s\S]*?)<\/script\s*>/ig;
+  let m;
+  while ((m = srcRe.exec(S))){
+    let data = null;
+    try{ data = JSON.parse(tekstAf(m.index + m[0].indexOf(">") + 1, m.index + m[0].length - m[0].match(/<\/script\s*>$/i)[0].length)); }catch(e){}
+    if (data && data.format === "etiket"){
+      res.gammelEtiket = data;
+      res.fjernEtiket.push(helLinje(S, m.index, m.index + m[0].length));
+    } else {
+      res.bygger = (data && data.format) || "ukendt";
+    }
+  }
+
+  /* Dublin Core i head */
+  const omraade = headSlut >= 0 ? headSlut : S.length;
+  const linkRe = /<link\b[^>]*\brel\s*=\s*["']schema\.DC["'][^>]*>/ig;
+  while ((m = linkRe.exec(S)) && m.index < omraade){
+    res.fjernDC.push(helLinje(S, m.index, m.index + m[0].length));
+  }
+  const metaRe = /<meta\b[^>]*\bname\s*=\s*["']DC\.([A-Za-z]+)["'][^>]*>/ig;
+  const subj = [];
+  while ((m = metaRe.exec(S)) && m.index < omraade){
+    const felt = m[1].toLowerCase();
+    const tag = tekstAf(m.index, m.index + m[0].length);
+    const v = (attrAf(tag, "content") || "").trim();
+    res.fjernDC.push(helLinje(S, m.index, m.index + m[0].length));
+    res.harDC = true;
+    if (DC_FIELDS.indexOf(felt) < 0 || !v) continue;
+    if (felt === "subject") subj.push(v);
+    else if (!res.dcFil[felt]) res.dcFil[felt] = v;
+  }
+  if (subj.length) res.dcFil.subject = subj.join("; ");
+
+  /* Hjem-knap fra dette værktøj */
+  const hjemRe = /<!-- HJEMKNAP -->[\s\S]*?<!-- HJEMKNAP SLUT -->/g;
+  while ((m = hjemRe.exec(S))){
+    res.fjernHjem.push(helLinje(S, m.index, m.index + m[0].length));
+    const blok = tekstAf(m.index, m.index + m[0].length);
+    const div = /<div\b[^>]*id="hjemknap-bar"[^>]*>/i.exec(blok);
+    if (div){
+      const span = /<span>([^<]*)<\/span>/i.exec(blok);
+      res.hjem = {
+        mode: attrAf(div[0], "data-mode") || "auto",
+        href: attrAf(div[0], "data-href") || "index.html",
+        tekst: span ? afkodEntiteter(span[1]) : "Hjem",
+        placering: /hjemknap-svaev/.test(div[0]) ? "svaev" : "flow"
+      };
+    }
+  }
+  /* Hjem-knap sat ind i hånden (fx fra hjem-knap-snippet.txt) */
+  if (!res.fjernHjem.length && /class\s*=\s*["'][^"']*\bhomewrap\b/i.test(S)) res.fremmedHjem = true;
+
+  /* Gamle værdier: Dublin Core i head først, en ældre etiket går forud */
+  const g = Object.assign({}, res.dcFil);
+  if (res.gammelEtiket && res.gammelEtiket.dublinCore){
+    for (const f of DC_FIELDS){
+      const v = String(res.gammelEtiket.dublinCore[f] || "").trim();
+      if (v) g[f] = v;
+    }
+  }
+  res.gamleDC = g;
+  res.udgiverIFil = g.publisher || "";
+
+  /* Gæt titel, beskrivelse, type og dato */
+  const sHead = headSlut >= 0 ? S.slice(0, headSlut) : S;
+  const mTitle = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(sHead);
+  const mH1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(S);
+  const tekstAfMatch = mm => mm ? tekstAf(mm.index, mm.index + mm[0].length) : "";
+  let titel = g.title || reneTekst(tekstAfMatch(mTitle)) || reneTekst(tekstAfMatch(mH1));
+  if (!titel) titel = navn.replace(/\.html?$/i, "").replace(/[-_]+/g, " ");
+  res.titel = titel;
+
+  let besk = g.description || "";
+  if (!besk){
+    const mD = /<meta\b[^>]*\bname\s*=\s*["']description["'][^>]*>/i.exec(sHead);
+    if (mD) besk = (attrAf(tekstAf(mD.index, mD.index + mD[0].length), "content") || "").trim();
+  }
+  res.beskrivelse = besk;
+
+  res.type = TYPER.some(t => t[0] === g.type) ? g.type : STANDARD_TYPE;
+  res.dato = g.date || (lastModified ? datoAf(lastModified) : "");
+
+  return res;
+}
+
+/* -------------------------------------------------------------------------
+   Byg det nye Dublin Core-sæt for én fil.
+   r = rækken (titel, beskrivelse, type, dato, a = analyse)
+   f = fælles felter {udgiver, ophav, emne, rettigheder}
+   ------------------------------------------------------------------------- */
+function byggDC(r, f){
+  const g = r.a.gamleDC || {};
+  const dc = {};
+  DC_FIELDS.forEach(k => dc[k] = String(g[k] || "").trim());
+
+  dc.title       = String(r.titel || "").trim();
+  dc.description = String(r.beskrivelse || "").trim();
+  dc.type        = r.type || STANDARD_TYPE;
+  dc.date        = String(r.dato || "").trim();
+
+  const udgiver = (f.udgiver || "").trim() || normUdgiver(g.publisher).vaerdi;
+  dc.publisher = udgiver;
+  if ((f.ophav || "").trim()) dc.creator = f.ophav.trim();
+  if ((f.rettigheder || "").trim()) dc.rights = f.rettigheder.trim();
+
+  let emner = (f.emne || "").trim() ? delEmner(f.emne) : delEmner(g.subject);
+  /* Udgivere hører ikke til blandt de øvrige emneord, heller ikke en gammel udgiver, der skiftes ud */
+  const gammel = String(g.publisher || "").trim();
+  emner = emner.filter(e => !erUdgivernavn(e) && e !== udgiver && e !== gammel);
+  if (udgiver) emner.unshift(udgiver);
+  dc.subject = emner.join("; ");
+
+  if (!dc.format) dc.format = "text/html";
+  if (!dc.language) dc.language = "da";
+
+  /* En gammel identifikator overskrives ikke (Builder-standard 5.6) */
+  if (!dc.identifier){
+    const p = PUBLISHERS.find(x => x.name === udgiver);
+    if (p){
+      const aar = (/\d{4}/.exec(dc.date) || [String(new Date().getFullYear())])[0];
+      dc.identifier = p.prefix + "-" + (TYPEORD[dc.type] || "side") + "-" +
+                      slugify(dc.title, "uden-titel") + "-" + aar;
+    }
+  }
+  return dc;
+}
+
+function byggHeadBlok(dc, dato){
+  let s = '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">\n';
+  for (const k of DC_FIELDS){
+    if (!dc[k]) continue;
+    const navn = "DC." + k;
+    if (k === "subject"){
+      delEmner(dc.subject).forEach(e => { s += '<meta name="' + navn + '" content="' + escAscii(e) + '">\n'; });
+    } else {
+      s += '<meta name="' + navn + '" content="' + escAscii(dc[k]) + '">\n';
+    }
+  }
+  const konvolut = {
+    format: "etiket",
+    builderVersion: 2,
+    metadataniveau: "let",
+    vaerktoej: VAERKTOEJ,
+    paasat: dato,
+    dublinCore: dc
+  };
+  s += '<script type="application/json" id="builder-source-data">' + jsonKunAscii(konvolut) + '<\/script>\n';
+  return s;
+}
+
+/* Hjem-knappens tre dele. Kun ASCII, så de passer i enhver fil. */
+const HJEM_CSS =
+MAERKE_START + '\n<style>\n' +
+'.hjemknap-bar{display:none}\n' +
+'.hjemknap-bar.hjemknap-vis{display:block}\n' +
+'.hjemknap-flow{padding:12px 16px 4px}\n' +
+'.hjemknap-svaev{position:fixed;top:12px;left:12px;z-index:90}\n' +
+'.hjemknap-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;box-sizing:border-box;' +
+'padding:8px 16px 8px 12px;border-radius:999px;border:2px solid currentColor;color:inherit;background:transparent;' +
+'font:700 16px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;text-decoration:none}\n' +
+'.hjemknap-btn svg{width:18px;height:18px;flex:0 0 auto}\n' +
+'.hjemknap-btn:hover{background:rgba(128,128,128,.16)}\n' +
+'.hjemknap-btn:focus-visible{outline:3px solid currentColor;outline-offset:2px}\n' +
+'.hjemknap-svaev .hjemknap-btn{background:#FBF8EF;color:#211E19;border-color:#211E19;box-shadow:0 2px 8px rgba(0,0,0,.25)}\n' +
+'.hjemknap-svaev .hjemknap-btn:hover{background:#EDE7D8}\n' +
+'@media print{.hjemknap-bar{display:none !important}}\n' +
+'</style>\n' + MAERKE_SLUT + '\n';
+
+const HJEM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>';
+
+const HJEM_JS =
+'(function(){\n' +
+'  /* Hjem-knap, Builder-standard 5.3. auto = vis kun, naar filen er del af en samling */\n' +
+'  var bar = document.getElementById("hjemknap-bar");\n' +
+'  if (!bar) return;\n' +
+'  var link = document.getElementById("hjemknap-btn");\n' +
+'  var mode = bar.getAttribute("data-mode") || "auto";\n' +
+'  var target = bar.getAttribute("data-href") || "index.html";\n' +
+'  function show(){ bar.classList.add("hjemknap-vis"); }\n' +
+'  function sikker(u){ return !!u && !/^\\s*(javascript|data|vbscript):/i.test(u); }\n' +
+'  function uden(p){ return p.replace(/index\\.html?$/i, ""); }\n' +
+'  function run(){\n' +
+'    if (mode === "never") return;\n' +
+'    var fra = null;\n' +
+'    try { var q = new URLSearchParams(location.search); fra = q.get("hjem") || q.get("home"); } catch(e){}\n' +
+'    if (!sikker(fra)) fra = null;\n' +
+'    if (fra) target = fra;\n' +
+'    link.setAttribute("href", target);\n' +
+'    if (mode === "always" || fra){ show(); return; }\n' +
+'    var path = (location.pathname || "").toLowerCase();\n' +
+'    if (path.slice(-1) === "/" || /\\/index\\.html?$/.test(path)) return;\n' +
+'    try { if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); return; } } catch(e){}\n' +
+'    if (navigator.standalone === true){ show(); return; }\n' +
+'    try {\n' +
+'      if (document.referrer){\n' +
+'        var ref = new URL(document.referrer), here = new URL(location.href), maal = new URL(target, location.href);\n' +
+'        var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));\n' +
+'        var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));\n' +
+'        if (ref.origin === here.origin && ref.href !== here.href && (refDir === hereDir || uden(ref.pathname) === uden(maal.pathname))){ show(); return; }\n' +
+'      }\n' +
+'    } catch(e){}\n' +
+'    if (location.protocol === "http:" || location.protocol === "https:"){\n' +
+'      try {\n' +
+'        fetch(target, {method:"HEAD", cache:"no-store"}).then(function(r){\n' +
+'          if (r && r.ok) show();\n' +
+'          else if (r && r.status === 405) return fetch(target).then(function(r2){ if (r2 && r2.ok) show(); });\n' +
+'        }).catch(function(){});\n' +
+'      } catch(e){}\n' +
+'    }\n' +
+'  }\n' +
+'  /* Koeres foerst, naar siden er indlaest, saa sider der gemmer sig selv ikke faar knappen "brandet" fast */\n' +
+'  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run); else run();\n' +
+'})();\n';
+
+function byggHjemBody(valg){
+  const mode = valg.mode === "always" ? "always" : "auto";
+  const href = (valg.href || "").trim() || "index.html";
+  const tekst = (valg.tekst || "").trim() || "Hjem";
+  const plac = valg.placering === "svaev" ? "hjemknap-svaev" : "hjemknap-flow";
+  return MAERKE_START + '\n' +
+    '<div class="hjemknap-bar ' + plac + '" id="hjemknap-bar" data-mode="' + mode + '" data-href="' + escAscii(href) + '">' +
+    '<a class="hjemknap-btn" id="hjemknap-btn" href="' + escAscii(href) + '">' + HJEM_SVG + '<span>' + escAscii(tekst) + '</span></a></div>\n' +
+    '<script>\n' + HJEM_JS + '<\/script>\n' + MAERKE_SLUT + '\n';
+}
+
+/* -------------------------------------------------------------------------
+   Lav listen over ændringer i filen. Positioner er bytes.
+   hjemValg.mode: auto | always | uaendret | fjern
+   ------------------------------------------------------------------------- */
+function planlaeg(r, faelles, hjemValg, dato){
+  const a = r.a;
+  const aendr = [];
+  const noter = [];
+
+  a.fjernEtiket.forEach(([s,e]) => aendr.push({start:s, slut:e, tekst:""}));
+  a.fjernDC.forEach(([s,e]) => aendr.push({start:s, slut:e, tekst:""}));
+
+  const dc = byggDC(r, faelles);
+  let head = byggHeadBlok(dc, dato);
+
+  const mode = hjemValg.mode;
+  if (a.fremmedHjem){
+    if (mode !== "uaendret") noter.push("har en hjem-knap sat ind i hånden og fik ikke en til");
+  } else {
+    if (mode !== "uaendret") a.fjernHjem.forEach(([s,e]) => aendr.push({start:s, slut:e, tekst:""}));
+    if (mode === "auto" || mode === "always"){
+      if (a.bodyPos < 0){
+        noter.push("fandt ikke <body> og fik derfor ingen hjem-knap");
+      } else {
+        head += HJEM_CSS;
+        aendr.push({start:a.bodyPos, slut:a.bodyPos, tekst:byggHjemBody(hjemValg), indsaet:true});
+      }
+    }
+  }
+  aendr.push({start:a.headPos, slut:a.headPos, tekst:head, indsaet:true});
+
+  aendr.sort((x, y) => (x.start - y.start) || ((y.indsaet ? 1 : 0) - (x.indsaet ? 1 : 0)));
+  let slut = -1;
+  for (const x of aendr){
+    if (x.start < slut) throw new Error("ændringerne overlapper hinanden — filen er ikke rørt");
+    slut = Math.max(slut, x.slut);
+  }
+  return {aendr, dc, noter};
+}
+
+/* Sæt den nye fil sammen af stykker af den gamle plus de nye blokke */
+function stykker(kilde, aendr){
+  const dele = [];
+  const enc = new TextEncoder();
+  let pos = 0;
+  for (const x of aendr){
+    if (x.start > pos) dele.push(kilde.slice(pos, x.start));
+    if (x.tekst) dele.push(enc.encode(x.tekst));
+    pos = Math.max(pos, x.slut);
+  }
+  dele.push(kilde.slice(pos));
+  return dele;
+}
+
+/* =========================================================================
+   KERNE SLUT
+   ========================================================================= */
+
+
+/* =========================================================================
+   Brugerfladen
+   ========================================================================= */
+
+const HOVED_BYTES = 1024 * 1024;     /* så meget af filen læses i første omgang */
+const HALE_BYTES  = 200 * 1024;
+const UNDERMAPPE  = "med-metadata";
+const $ = id => document.getElementById(id);
+
+let raekker = [];
+let mappeHandle = null;
+
+/* Udgiverlisten */
+(function(){
+  const sel = $("udgiver");
+  const o0 = document.createElement("option");
+  o0.value = ""; o0.textContent = "(ikke valgt)";
+  sel.appendChild(o0);
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+async function analyser(navn, file){
+  let bytes;
+  try{
+    bytes = new Uint8Array(await file.slice(0, HOVED_BYTES).arrayBuffer());
+  }catch(e){
+    return null;
+  }
+  let a = analyserBytes(navn, bytes, file.lastModified);
+
+  /* Fandt vi ikke <body> i første omgang, læses hele filen */
+  if (a.bodyPos < 0 && file.size > HOVED_BYTES){
+    try{
+      bytes = new Uint8Array(await file.arrayBuffer());
+      a = analyserBytes(navn, bytes, file.lastModified);
+    }catch(e){}
+  }
+  /* Byggerne lægger datablokken sidst i filen */
+  if (!a.bygger && file.size > bytes.length){
+    try{
+      const hale = await file.slice(Math.max(0, file.size - HALE_BYTES)).text();
+      const m = /<script\b[^>]*\bid\s*=\s*["']builder-source-data["'][^>]*>([\s\S]*?)<\/script>/i.exec(hale);
+      if (m){
+        let fmt = "ukendt";
+        try{ fmt = JSON.parse(m[1]).format || fmt; }catch(e){}
+        if (fmt !== "etiket") a.bygger = fmt;
+      }
+    }catch(e){}
+  }
+
+  const forside = /^index\.html?$/i.test(navn);
+  return {
+    navn, file, a,
+    titel: a.titel, beskrivelse: a.beskrivelse, type: a.type, dato: a.dato,
+    med: !a.bygger && !a.gammelEtiket && !forside,
+    forside, klaret: false
+  };
+}
+
+function maerkerFor(r){
+  const a = r.a, ud = [];
+  if (r.klaret) ud.push(["ok", "Klaret i denne omgang"]);
+  if (a.bygger){ ud.push(["", "Lavet med en bygger (" + a.bygger + "). Ret den i byggeren."]); return ud; }
+  if (r.forside) ud.push(["advarsel", "Ser ud til at være forsiden og er fravalgt"]);
+  if (a.gammelEtiket) ud.push(["", "Har en ældre etiket. Vælg den, hvis den skal skrives om."]);
+  else if (a.harDC) ud.push(["", "Har Dublin Core i forvejen. Felterne bliver bevaret."]);
+  if (a.hjem) ud.push(["", "Har hjem-knap (" + ({auto:"Automatisk", always:"Altid vist", never:"Aldrig vist"}[a.hjem.mode] || a.hjem.mode) + ", " + a.hjem.href + ")"]);
+  if (a.fremmedHjem) ud.push(["advarsel", "Har en hjem-knap sat ind i hånden. Den får ikke en til."]);
+  if (a.udgiverIFil){
+    const n = normUdgiver(a.udgiverIFil);
+    if (!n.kendt) ud.push(["advarsel", "Udgiver i filen: " + a.udgiverIFil + " (ikke på listen). Vælg en udgiver ovenfor for at rette den."]);
+    else if (n.rettet) ud.push(["", "Udgiver i filen bliver rettet til: " + n.vaerdi]);
+  }
+  if (a.bodyPos < 0) ud.push(["advarsel", "Fandt ikke <body>, så der kan ikke komme en hjem-knap på"]);
+  return ud;
+}
+
+function tegnTabel(){
+  const tbody = $("rows");
+  tbody.innerHTML = "";
+
+  raekker.forEach((r, i) => {
+    const laast = !!r.a.bygger;
+    const tr = document.createElement("tr");
+    if (i % 2 === 1) tr.classList.add("zebra");
+    if (laast) tr.classList.add("laast");
+
+    const tdMed = document.createElement("td");
+    tdMed.className = "med"; tdMed.dataset.etiket = "Med";
+    const chk = document.createElement("input");
+    chk.type = "checkbox"; chk.checked = r.med; chk.disabled = laast;
+    chk.setAttribute("aria-label", "Tag " + r.navn + " med");
+    chk.addEventListener("change", () => { r.med = chk.checked; opdaterStatus(); });
+    tdMed.appendChild(chk);
+
+    const tdNavn = document.createElement("td");
+    tdNavn.dataset.etiket = "Fil";
+    const nv = document.createElement("span");
+    nv.className = "filnavn"; nv.textContent = r.navn;
+    maerkerFor(r).forEach(([kl, t]) => {
+      const m = document.createElement("span");
+      m.className = "maerke" + (kl ? " " + kl : ""); m.textContent = t;
+      nv.appendChild(m);
+    });
+    tdNavn.appendChild(nv);
+
+    const felt = (tag, etiket, vaerdi, saet, ekstra) => {
+      const td = document.createElement("td");
+      td.dataset.etiket = etiket;
+      const el = document.createElement(tag);
+      if (tag === "input") el.type = "text";
+      if (ekstra) ekstra(el);
+      el.value = vaerdi;
+      el.disabled = laast;
+      el.setAttribute("aria-label", etiket + " for " + r.navn);
+      el.addEventListener(tag === "select" ? "change" : "input", () => saet(el.value));
+      td.appendChild(el);
+      return td;
+    };
+
+    const tdTitel = felt("input", "Titel", r.titel, v => r.titel = v);
+    const tdBesk  = felt("textarea", "Beskrivelse", r.beskrivelse, v => r.beskrivelse = v, el => el.rows = 2);
+    const tdType  = felt("select", "Type", r.type, v => r.type = v, el => {
+      TYPER.forEach(([v, t]) => {
+        const o = document.createElement("option");
+        o.value = v; o.textContent = t;
+        el.appendChild(o);
+      });
+    });
+    const tdDato  = felt("input", "Dato", r.dato, v => r.dato = v);
+
+    tr.append(tdMed, tdNavn, tdTitel, tdBesk, tdType, tdDato);
+    tbody.appendChild(tr);
+  });
+
+  ["p-faelles","p-tabel","p-hjem","p-gem"].forEach(id => $(id).hidden = false);
+  $("gemHint").textContent = mappeHandle
+    ? "Filerne bliver skrevet direkte på din computer."
+    : "Filerne bliver hentet ned én ad gangen. Brug Edge eller Chrome, hvis du hellere vil have dem skrevet direkte i mappen.";
+  opdaterStatus();
+}
+
+function opdaterStatus(){
+  const valgte = raekker.filter(r => r.med).length;
+  const bygger = raekker.filter(r => r.a.bygger).length;
+  let s = valgte + " af " + raekker.length + " filer er valgt.";
+  if (bygger) s += " " + bygger + " er lavet med en bygger og bliver ikke rørt.";
+  $("status").textContent = s;
+}
+
+function hjemValg(){
+  return {
+    mode: document.querySelector('input[name="hjemvalg"]:checked').value,
+    placering: document.querySelector('input[name="placering"]:checked').value,
+    tekst: $("hjemTekst").value,
+    href: $("hjemHref").value
+  };
+}
+function faelles(){
+  return {
+    udgiver: $("udgiver").value,
+    ophav: $("ophav").value,
+    emne: $("emne").value,
+    rettigheder: $("rettigheder").value
+  };
+}
+
+/* Prøvebilledet af knappen */
+function opdaterProeve(){
+  const v = hjemValg();
+  const p = $("proeve");
+  const vis = v.mode === "auto" || v.mode === "always";
+  p.className = "proeve " + (vis ? (v.placering === "svaev" ? "svaev" : "flow") : "skjult");
+  $("proeveTekst").textContent = v.tekst.trim() || "Hjem";
+  $("placeringValg").disabled = !vis;
+  $("hjemTekst").disabled = !vis;
+  $("hjemHref").disabled = !vis;
+  $("proeveNote").textContent =
+    !vis ? (v.mode === "fjern" ? "Hjem-knappen bliver fjernet." : "Hjem-knappen bliver ikke rørt.")
+    : v.placering === "svaev" ? "Svævende har knappen sin egen lyse baggrund, så den kan ses på alle sider."
+    : "Øverst på siden overtager knappen sidens egen tekstfarve.";
+}
+document.querySelectorAll('input[name="hjemvalg"],input[name="placering"]').forEach(el =>
+  el.addEventListener("change", opdaterProeve));
+$("hjemTekst").addEventListener("input", opdaterProeve);
+opdaterProeve();
+
+/* ------------------------------------------------------------------ Gem */
+
+async function lavNyFil(r){
+  const plan = planlaeg(r, faelles(), hjemValg(), datoAf(Date.now()));
+  return {blob: new Blob(stykker(r.file, plan.aendr), {type:"text/html"}), noter: plan.noter};
+}
+
+$("gem").addEventListener("click", async () => {
+  const valgte = raekker.filter(r => r.med && !r.a.bygger);
+  if (!valgte.length){
+    $("status").innerHTML = '<span class="fejl">Der er ikke valgt nogen filer.</span>';
+    return;
+  }
+  const udenTitel = valgte.filter(r => !String(r.titel).trim());
+  if (udenTitel.length){
+    $("status").innerHTML = '<span class="fejl">' + udenTitel.length + ' af de valgte filer mangler en titel.</span>';
+    return;
+  }
+
+  const maade = document.querySelector('input[name="gemmaade"]:checked').value;
+  const knap = $("gem");
+  knap.disabled = true;
+
+  let maalMappe = null;
+  if (mappeHandle && maade === "kopi"){
+    try{
+      maalMappe = await mappeHandle.getDirectoryHandle(UNDERMAPPE, {create:true});
+    }catch(e){
+      $("status").innerHTML = '<span class="fejl">Kunne ikke lave undermappen. Prøv at hente filerne ned i stedet.</span>';
+      knap.disabled = false;
+      return;
+    }
+  }
+
+  const klaret = [], fejlet = [], noter = [];
+
+  for (let i = 0; i < valgte.length; i++){
+    const r = valgte[i];
+    $("status").textContent = "Arbejder … " + (i+1) + " af " + valgte.length + ": " + r.navn;
+    try{
+      const {blob, noter: n} = await lavNyFil(r);
+      n.forEach(t => noter.push(r.navn + " " + t));
+
+      if (mappeHandle && (maalMappe || maade === "overskriv")){
+        const mappe = maalMappe || mappeHandle;
+        const fh = await mappe.getFileHandle(r.navn, {create:true});
+        const w = await fh.createWritable();
+        await w.write(blob);
+        await w.close();
+        /* Er originalen skrevet om, læses den igen, så tabellen passer */
+        if (!maalMappe && r.handle){
+          const ny = await analyser(r.navn, await r.handle.getFile());
+          if (ny){ ny.handle = r.handle; Object.assign(r, ny); }
+        }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = r.navn;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 8000);
+        await new Promise(res => setTimeout(res, 400));
+      }
+      r.med = false; r.klaret = true;
+      klaret.push(r.navn);
+    }catch(e){
+      fejlet.push({navn:r.navn, grund:(e && e.message) || "ukendt fejl"});
+    }
+  }
+
+  tegnTabel();
+
+  let s = '<span class="ok">' + klaret.length + ' filer er klaret.</span>';
+  if (mappeHandle && maade === "kopi") s += " De ligger i undermappen " + UNDERMAPPE + ".";
+  else if (mappeHandle) s += " De oprindelige filer er opdateret.";
+  else s += " De er hentet ned. Læg dem i mappen sammen med forsiden og søgesiden.";
+  if (fejlet.length) s += ' <span class="advarsel">' + fejlet.length + ' gik galt.</span>';
+  $("status").innerHTML = s;
+
+  const plads = $("resultatliste");
+  plads.innerHTML = "";
+  const liste = (overskrift, linjer) => {
+    if (!linjer.length) return;
+    const d = document.createElement("details");
+    const sum = document.createElement("summary");
+    sum.textContent = overskrift;
+    const ul = document.createElement("ul");
+    linjer.forEach(t => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+    d.append(sum, ul);
+    plads.appendChild(d);
+  };
+  liste("Se hvad der gik galt", fejlet.map(f => f.navn + " — " + f.grund));
+  liste("Bemærkninger", noter);
+  knap.disabled = false;
+});
+
+/* ----------------------------------------------------------- Indlæsning */
+
+const erHtml = n => /\.html?$/i.test(n) && n !== "soegeside.html";
+
+async function indlaes(filer){
+  $("mappeHint").textContent = "Læser " + filer.length + " filer …";
+  raekker = [];
+  for (const f of filer){
+    const r = await analyser(f.navn, f.file);
+    if (!r) continue;
+    r.handle = f.handle || null;
+    raekker.push(r);
+  }
+  raekker.sort((a,b) => a.navn.localeCompare(b.navn, "da"));
+  $("mappeHint").textContent = raekker.length + " HTML-filer fundet.";
+  tegnTabel();
+}
+
+$("vaelgMappe").addEventListener("click", async () => {
+  if (window.showDirectoryPicker){
+    try{
+      const h = await window.showDirectoryPicker({mode:"readwrite"});
+      mappeHandle = h;
+      const filer = [];
+      for await (const [navn, handle] of h.entries()){
+        if (handle.kind === "file" && erHtml(navn)){
+          filer.push({navn, file: await handle.getFile(), handle});
+        }
+      }
+      await indlaes(filer);
+      $("mappeHint").textContent = "Mappe: " + h.name + " · " + raekker.length + " HTML-filer fundet.";
+      return;
+    }catch(e){
+      if (e && e.name === "AbortError") return;
+      mappeHandle = null;
+    }
+  }
+  mappeInput.click();
+});
+
+const mappeInput = document.createElement("input");
+mappeInput.type = "file"; mappeInput.webkitdirectory = true;
+mappeInput.className = "visuelt-skjult";
+document.body.appendChild(mappeInput);
+mappeInput.addEventListener("change", async () => {
+  mappeHandle = null;
+  const top = Array.from(mappeInput.files).filter(f => {
+    const dele = (f.webkitRelativePath || f.name).split("/");
+    return dele.length <= 2 && erHtml(f.name);
+  });
+  await indlaes(top.map(f => ({navn:f.name, file:f})));
+});
+
+const filInput = document.createElement("input");
+filInput.type = "file"; filInput.multiple = true; filInput.accept = ".html,.htm";
+filInput.className = "visuelt-skjult";
+document.body.appendChild(filInput);
+$("vaelgFiler").addEventListener("click", () => filInput.click());
+filInput.addEventListener("change", async () => {
+  mappeHandle = null;
+  await indlaes(Array.from(filInput.files).map(f => ({navn:f.name, file:f})));
+});
+
+const zone = $("dropzone");
+["dragenter","dragover"].forEach(t => zone.addEventListener(t, e => {
+  e.preventDefault(); zone.classList.add("over");
+}));
+["dragleave","drop"].forEach(t => zone.addEventListener(t, e => {
+  e.preventDefault(); zone.classList.remove("over");
+}));
+zone.addEventListener("drop", async e => {
+  mappeHandle = null;
+  const items = Array.from(e.dataTransfer.items || []);
+  const entries = items.map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+  const filer = [];
+  for (const entry of entries){
+    if (entry.isDirectory){
+      const reader = entry.createReader();
+      const laes = () => new Promise(res => reader.readEntries(res, () => res([])));
+      let batch;
+      do {
+        batch = await laes();
+        for (const ent of batch){
+          if (ent.isFile && erHtml(ent.name)){
+            const f = await new Promise(res => ent.file(res, () => res(null)));
+            if (f) filer.push({navn:ent.name, file:f});
+          }
+        }
+      } while (batch.length);
+    } else if (entry.isFile && erHtml(entry.name)){
+      const f = await new Promise(res => entry.file(res, () => res(null)));
+      if (f) filer.push({navn:entry.name, file:f});
+    }
+  }
+  if (!filer.length){
+    $("mappeHint").textContent = "Der var ingen HTML-filer i det, du trak herned.";
+    return;
+  }
+  await indlaes(filer);
+});
+
+/* ------------------------------------------------------------ Småting */
+
+$("saetTypeAlle").addEventListener("click", () => {
+  const foerste = raekker.find(r => r.med);
+  if (!foerste) return;
+  raekker.forEach(r => { if (r.med) r.type = foerste.type; });
+  tegnTabel();
+});
+$("saetDatoAlle").addEventListener("click", () => {
+  const foerste = raekker.find(r => r.med);
+  if (!foerste) return;
+  raekker.forEach(r => { if (r.med) r.dato = foerste.dato; });
+  tegnTabel();
+});
+$("fravaelgAlle").addEventListener("click", () => {
+  raekker.forEach(r => r.med = false); tegnTabel();
+});
+$("tilvaelgAlle").addEventListener("click", () => {
+  raekker.forEach(r => { if (!r.a.bygger) r.med = true; }); tegnTabel();
+});
+
+(function(){
+  const knapper = document.querySelectorAll(".tekststr button");
+  function saet(v, gem){
+    if (v && v !== "normal"){ document.documentElement.setAttribute("data-tekst", v); }
+    else { document.documentElement.removeAttribute("data-tekst"); v = "normal"; }
+    knapper.forEach(k => k.setAttribute("aria-pressed", String(k.dataset.str === v)));
+    if (gem){ try{ localStorage.setItem("lokalhist-tekst", v); }catch(e){} }
+  }
+  let gemt = null;
+  try{ gemt = localStorage.getItem("lokalhist-tekst"); }catch(e){}
+  if (gemt) saet(gemt, false);
+  knapper.forEach(k => k.addEventListener("click", () => saet(k.dataset.str, true)));
+})();
+</script>
+</body>
+</html>
