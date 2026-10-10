@@ -28,8 +28,8 @@
   .field label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
   .field .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
   .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
-  .check{ display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none; letter-spacing:0; font-size:14.5px; line-height:1.45; }
-  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--accent-ui, #385261); cursor:pointer; }
+  .check, .field label.check{ display:flex; margin-bottom:0; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none; letter-spacing:0; font-size:14.5px; line-height:1.45; }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--rust); cursor:pointer; }
   .check span strong{ font-weight:650; }
   .field .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
   input[type=text], textarea{
@@ -86,7 +86,7 @@
     width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
     font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px;
   }
-  .generate-btn:disabled{ background:#c9beac; cursor:not-allowed; }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4436; cursor:not-allowed; }
   .generate-btn:hover:not(:disabled){ background:#82392a; }
   .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
   .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
@@ -117,7 +117,7 @@
 
 <div class="topbar">
   <h1>Sidebygger</h1>
-  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.4</span>
+  <span>Lav en artikelside om en gade, et sted eller et menneske · kører lokalt, ingen server · version 1.5</span>
 </div>
 
 <div class="layout">

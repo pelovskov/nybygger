@@ -1,1 +1,1 @@
-Bring denne bygger i overensstemmelse med Builder-standard 1.2. Brug tjeklisten i afsnit 10 og Sidebyggeren som reference.
+Bring denne bygger i overensstemmelse med Builder-standard 1.5. Brug tjeklisten i afsnit 10 og Sidebyggeren som reference.
