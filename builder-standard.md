@@ -1,7 +1,7 @@
 # Builder-standard
 
 **Fælles specifikation for værktøjskassen**
-Version 1.3 · oktober 2026
+Version 1.4 · oktober 2026
 
 Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.4).
 Når noget er i tvivl, er det referencefilen der gælder.
@@ -21,12 +21,13 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | Enkeltbillede · Bygger | ét billede i høj kvalitet med tekst og Exif | Image |
 | Før og Nu · Bygger | to billeder fra samme sted med slider | Image |
 | Mediekort · Bygger | kort til en video (YouTube) eller en podcast, med kapitler og evt. transskription | MovingImage (video), Sound (podcast) |
+| Præsentation · Bygger | billedshow til foredrag og oplæg, med pile, fuld skærm og automatisk visning | Image |
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
 | Vejledningsbygger | trin-for-trin vejledning | afklares |
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
 | Metadata-hjælper | ingen fil; laver en AI-prompt til Dublin Core og kontrollerer svaret (se afsnit 11) | - |
 
-Bragt i overensstemmelse med standarden: Sidebygger (v1.4) og Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2).
+Bragt i overensstemmelse med standarden: Sidebygger (v1.4), Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2) og Præsentation · Bygger (v1.0, `praesentation-bygger.html`, følger 1.4).
 
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
@@ -261,7 +262,7 @@ Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stav
 
 Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". Status ved indlæsning nævner rettelsen. Står der et helt ukendt navn, vises det som ekstra valg markeret "ikke på listen", så det ikke går tabt, men kan rettes.
 
-**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Forslaget kan overskrives.
+**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video, praesentation). Forslaget kan overskrives.
 
 **dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje" og "Steder, institutioner og mennesker") indsætter serien som andet emneord.
 
@@ -396,6 +397,8 @@ Skaleres til maks. **1600 px** på den længste led og gemmes som JPEG, kvalitet
 
 Undtagelse: Enkeltbillede · Bygger gemmer i høj opløsning (3000-4000 px eller originalen) og bevarer Exif, fordi det er appens formål.
 
+Undtagelse: Præsentation · Bygger gemmer billederne i **2560 px** og kvalitet **0,85**, fordi de skal vises på storskærm eller projektor. Der kan højst være **25 billeder**, så filen holder sig omkring 15-25 MB. Hvert billede får desuden en lille udgave (480 px, 0,78), som bruges i oversigten, i forhåndsvisningen og som `<link rel="icon">`. Den store udgave ligger i `data-full` på billedet og hentes først, når billedet vises.
+
 Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 
 Billederne behandles ét ad gangen, så computeren ikke går i stå, når man vælger mange store billeder på én gang. Rækkefølgen følger det valgte.
@@ -442,7 +445,7 @@ Regler:
 - [ ] Skriftstørrelser og kontrast fra afsnit 3
 - [ ] De fem temaer med `THEMES` kopieret uændret fra afsnit 3
 - [ ] Indlæsning af egne filer med pæn afvisning af fremmede filer, andre formater og ældre builderVersion
-- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede)
+- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede og Præsentation)
 - [ ] Alt-tekstfelt pr. billede
 - [ ] Sidecar-filer læses efter 8.1 (hvor appen tager imod billeder)
 
@@ -569,6 +572,11 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 ## 12. Ændringslog
 
+**Version 1.4 — oktober 2026.**
+- Ny bygger: Præsentation · Bygger (v1.0), der afløser den PHP-baserede Billedpresent. Laver et billedshow til foredrag, som kan vises uden internet.
+- Afsnit 8: undtagelse for Præsentation · Bygger med 2560 px / 0,85, højst 25 billeder og en lille udgave til oversigten.
+- Afsnit 4.1: typeordet `praesentation` til dc.identifier, fx `SFB-praesentation-de-glemte-butikker-2026`.
+
 **Version 1.3 — oktober 2026.**
 - Videokort · Bygger er afløst af Mediekort · Bygger, som laver kort til både video (MovingImage) og podcast (Sound).
 - Nyt værktøj: Metadata-hjælper (v1.1), der laver INDLEDNING og prompt efter afsnit 11 og kontrollerer AI'ens svar. Afviger bevidst fra standarden, fordi den ikke laver en fil.
@@ -613,4 +621,4 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 **Afklares, når byggeren tages op:**
 - dc.type for Henvisning, Vejledning og PWA.
 - Kort typeord i dc.identifier for Mediekort · Bygger: "video" for video, og hvilket ord for podcast (fx "podcast" eller "lyd").
-- Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger og Album · Bygger har begge dele.
+- Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger, Album · Bygger og Præsentation · Bygger har begge dele.
