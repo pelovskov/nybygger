@@ -6,7 +6,9 @@
 <title>Søgeside · Bygger</title>
 <style>
 /* ---------------------------------------------------------------
-   Søgeside · Bygger — version 1 (sep. 2026)
+   Søgeside · Bygger — version 1.1 (okt. 2026)
+   1.1: links til egne filer får ?hjem=soegeside.html med og åbnes i
+        samme faneblad, så Hjem-knappen virker – også lokalt og på USB.
    Bygger en søgeside ud af en mappe med singlefile-HTML-filer.
    Alt sker i browseren. Ingen filer sendes nogen steder hen.
    Farvetokens er de samme som i den genererede søgeside.
@@ -203,7 +205,8 @@ henviser til. Kør Søgeside · Bygger igen, når du har lagt nye filer i mappen
 /* =========================================================================
    Del 1 · Skabelonen for den færdige søgeside
    Denne er 1:1 med Byg-soegeside.command, bortset fra at overskrift,
-   undertitel og fodnote nu kan sættes af brugeren.
+   undertitel og fodnote nu kan sættes af brugeren, og at links til egne
+   filer får ?hjem= med (fra version 1.1).
    Bemærk: "</script" skrives som "<\/script" og "\d" som "\\d",
    fordi teksten står inde i et script-element.
    ========================================================================= */
@@ -368,6 +371,14 @@ const ICONS = {Sound:"🎧",Image:"🖼️",Text:"📖",Collection:"🗂️",Int
 })();
 
 function yearOf(s){var m=(s||"").match(/\\d{4}/); return m?m[0]:"0000";}
+
+/* Søgesidens eget filnavn, så Hjem-knappen i filerne også virker, hvis siden omdøbes. */
+const MIG = (function(){
+  try{
+    const n = decodeURIComponent(location.pathname.split("/").pop() || "");
+    return /\\.html?$/i.test(n) ? n : "soegeside.html";
+  }catch(e){ return "soegeside.html"; }
+})();
 
 /* =====================================================================
    Søgningen
@@ -577,8 +588,15 @@ function render(){
     const a=document.createElement("a");
     a.className="row " + (i%2===0?"row--a":"row--b");
     const erEkstern = !!r.link;
-    a.href = erEkstern ? r.link : encodeURI(r.filnavn);
-    a.target="_blank"; a.rel = erEkstern ? "noopener noreferrer" : "noopener";
+    /* Egne filer får ?hjem=<denne side> med, så deres Hjem-knap fører tilbage hertil
+       (Builder-standard 5.3). Det virker også fra USB-stik og lokale mapper.
+       De åbnes i samme faneblad, så Hjem og browserens tilbage-knap gør det samme. */
+    if(erEkstern){
+      a.href = r.link;
+      a.target="_blank"; a.rel="noopener noreferrer";
+    } else {
+      a.href = encodeURI(r.filnavn) + "?hjem=" + encodeURIComponent(MIG);
+    }
 
     const icon=document.createElement("span");
     icon.className="icon"; icon.textContent = ICONS[r.type]||"📄";
