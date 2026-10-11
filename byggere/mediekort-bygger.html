@@ -80,6 +80,7 @@
 
   .posterrow{ display:flex; gap:14px; align-items:flex-start; margin-top:12px; }
   .posterrow img{ width:160px; aspect-ratio:16/9; object-fit:cover; border:1px solid var(--line); border-radius:4px; background:var(--paper-dim); }
+  .posterrow img.free{ aspect-ratio:auto; object-fit:contain; width:auto; max-width:160px; max-height:200px; }
   .posterrow .meta{ font-size:13.5px; color:var(--hint); line-height:1.5; }
   .posterrow .meta b{ color:var(--ink); }
 
@@ -132,7 +133,7 @@
 
 <div class="topbar">
   <h1>Mediekort · Bygger</h1>
-  <span>Lav et kort til en video eller en podcast, med kapitler og udskrift · kører lokalt, ingen server · version 1.1</span>
+  <span>Lav et kort til en video, en podcast eller et talende billede, med kapitler og udskrift · kører lokalt, ingen server · version 1.2</span>
 </div>
 
 <div class="layout">
@@ -200,6 +201,11 @@
           <div class="tname">Lydfil / podcast</div>
           <div class="tsub">Fra jeres eget webhotel eller Buzzsprout. Kan også lægges ind i kortet.</div>
         </label>
+        <label class="mode-option" data-mode="picture">
+          <input type="radio" name="mode" value="picture">
+          <div class="tname">Talende billede</div>
+          <div class="tsub">Ét billede i god kvalitet med en kort, indtalt fortælling (30 sek. – 3 min.).</div>
+        </label>
       </div>
     </div>
 
@@ -225,6 +231,9 @@
     </div>
 
     <div id="audioFields" hidden>
+      <div class="hint" id="picAudioTip" hidden style="margin:-6px 0 18px; font-size:13.5px; color:var(--hint); line-height:1.55; background:#f7f3e7; border-left:4px solid var(--rust); padding:10px 13px">
+        <strong>Godt råd til fortælleren:</strong> Begynd med at beskrive billedet kort, fx <em>"Til venstre ser du butiksvinduet, og manden i forklædet er bager Hansen …"</em>. Så kan også den, der ser dårligt, følge med. Lyden bør ligge inde i kortet — vælg lydfilen i feltet herunder. En adresse er ikke nødvendig.
+      </div>
       <div class="field">
         <label for="fAudioUrl">Adresse på lydfilen</label>
         <input type="url" id="fAudioUrl" placeholder="https://…/episode.mp3 eller en Buzzsprout-episode">
@@ -282,15 +291,28 @@
           <div class="meta" id="posterMeta"></div>
         </div>
       </div>
-      <div class="hint">Vises øverst på kortet og virker også uden internet. Billedet beskæres til bredformat (16:9) og skaleres til højst 1600 px.</div>
+      <div class="hint" id="posterHint">Vises øverst på kortet og virker også uden internet. Billedet beskæres til bredformat (16:9) og skaleres til højst 1600 px.</div>
     </div>
 
     <div class="field">
       <label for="fPosterAlt">Alt-tekst til plakatbilledet</label>
       <input type="text" id="fPosterAlt" placeholder="Til skærmlæsere. Er feltet tomt, bruges titlen.">
+      <div class="hint">Beskriv kort, hvad man ser, fx "Philips kassettebåndoptager med mikrofon og to kassetter på gul baggrund". Skriv ikke "billede af".</div>
     </div>
 
-    <div class="sectionhead">Om udsendelsen</div>
+    <div class="field">
+      <label for="fPosterCredit">Billedets ophav (valgfri)</label>
+      <input type="text" id="fPosterCredit" placeholder="fx Foto: Roskilde Lokalhistoriske Arkiv">
+      <div class="hint">Vises med lille skrift under billedet. Brug feltet, når billedet har en anden ophavsmand end resten af kortet, så det er tydeligt, at rettighederne i Dublin Core ikke gælder billedet.</div>
+    </div>
+
+    <div class="sectionhead">Beskrivelse</div>
+
+    <div class="field">
+      <label for="fOmTitle">Overskrift over beskrivelsen (valgfri)</label>
+      <input type="text" id="fOmTitle" placeholder="Om udsendelsen">
+      <div class="hint">Er feltet tomt, står der "Om udsendelsen" ved video og podcast og "Om billedet" ved et talende billede.</div>
+    </div>
 
     <div class="field">
       <label for="fText">Beskrivelse</label>
@@ -312,6 +334,10 @@
     </div>
 
     <div class="sectionhead">Læs mere — udskrift (valgfri)</div>
+
+    <div class="hint" id="picTransTip" hidden style="margin:-6px 0 18px; font-size:13.5px; color:var(--hint); line-height:1.55; background:#f7f3e7; border-left:4px solid var(--rust); padding:10px 13px">
+      <strong>Til et talende billede bør fortællingen skrives ned her.</strong> Så får døve og hørehæmmede den også, og fortællingen overlever, hvis lyden en dag ikke kan afspilles. Et par minutters tale er hurtigt at skrive af.
+    </div>
 
     <div class="field">
       <label for="fTransTitle">Overskrift på udfoldningen</label>
@@ -415,15 +441,23 @@
 
 <script>
 /* =======================================================================
-   Mediekort · Bygger — version 1.1 (videofil fra fx pCloud tilføjet)
-   Følger Builder-standard 1.2 (september 2026). Reference: Sidebygger 1.4.
+   Mediekort · Bygger — version 1.2
+   1.1: videofil fra fx pCloud.
+   1.2: "Talende billede" (mode 'picture'): billedet i op til 2000 px i sin
+        egen form, fuld skærm-visning, lille favicon, felt til billedets ophav,
+        overskrift over beskrivelsen og "Gem filen"-tekst der passer til indholdet.
+        Ændringerne er tilføjelser, så builderVersion er stadig 1, og
+        tidligere mediekort kan indlæses som før.
+   Følger Builder-standard 1.6 (oktober 2026). Reference: Sidebygger 1.5.
    Outputformat: "mediekort", builderVersion 1.
    ======================================================================= */
 const BUILDER_VERSION = 1;   // tælles op ved formatændringer
 
 const state = {
   theme:'original',
-  mode:'video',                // 'video' eller 'audio'
+  mode:'video',                // 'video', 'videofile', 'audio' eller 'picture'
+  posterOrig:'', posterKind:'wide', posterLabel:'', favicon:'',
+  posterCredit:'', omTitle:'',
   videoId:'',
   audioUrl:'', audioDuration:0,
   videoFileUrl:'', videoDuration:0,
@@ -843,10 +877,39 @@ function testMedia(kind){
 }
 function testAudioUrl(){ testMedia('audio'); }
 
-/* ---------- Plakatbillede: 16:9, højst 1600 px, JPEG 0,82 ---------- */
+/* ---------- Plakatbillede ----------
+   Video og podcast: 16:9, højst 1600 px, JPEG 0,82 (Builder-standard afsnit 8).
+   Talende billede: billedets egen form, højst 2000 px, JPEG 0,85 — billedet er
+   hovedsagen og skal kunne ses i fuld skærm. */
 
-function makePoster(img){
+function isAudioMode(m){ return m === 'audio' || m === 'picture'; }
+function posterKindFor(mode){ return mode === 'picture' ? 'free' : 'wide'; }
+function defaultDcType(mode){ return isAudioMode(mode) ? 'Sound' : 'MovingImage'; }
+
+// Lille ikon til browserfanen (64 px, firkantet), så billedet ikke ligger i filen to gange.
+function makeIcon(img){
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const side = Math.min(w, h);
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const k = c.getContext('2d');
+  k.imageSmoothingQuality = 'high';
+  k.drawImage(img, Math.round((w - side) / 2), Math.round((h - side) / 2), side, side, 0, 0, 64, 64);
+  return c.toDataURL('image/jpeg', 0.8);
+}
+
+function makePoster(img, kind){
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if (kind === 'free'){
+    const scale = Math.min(1, 2000 / Math.max(w, h));
+    const outW = Math.round(w * scale), outH = Math.round(h * scale);
+    const c = document.createElement('canvas');
+    c.width = outW; c.height = outH;
+    const k = c.getContext('2d');
+    k.imageSmoothingQuality = 'high';
+    k.drawImage(img, 0, 0, outW, outH);
+    return { url: c.toDataURL('image/jpeg', 0.85), w: outW, h: outH };
+  }
   const ratio = 16 / 9;
   let sx = 0, sy = 0, sw = w, sh = h;
   if (w / h > ratio){ sw = Math.round(h * ratio); sx = Math.round((w - sw) / 2); }
@@ -869,19 +932,42 @@ function loadImage(src){
   });
 }
 
+function noPosterText(){
+  return state.mode === 'picture'
+    ? 'Intet billede valgt — et talende billede skal have et billede'
+    : 'Intet billede valgt — kortet tegner en enkel plakat med titlen';
+}
+
 function setPoster(url, info){
   state.poster = url || '';
+  state.favicon = '';
   if (state.poster){
     $('posterThumb').src = state.poster;
+    $('posterThumb').classList.toggle('free', state.posterKind === 'free');
     $('posterMeta').innerHTML = info + '<br>~' + fmtBytes(state.poster.length * 0.75) + ' i filen';
     $('posterRow').hidden = false;
+    const forUrl = state.poster;
+    loadImage(forUrl).then(img => {
+      if (state.poster !== forUrl) return;
+      state.favicon = makeIcon(img);
+      renderPreview();
+    }).catch(() => {});
   } else {
     $('posterRow').hidden = true;
-    $('posterStatus').textContent = 'Intet billede valgt — kortet tegner en enkel plakat med titlen';
+    $('posterStatus').textContent = noPosterText();
     $('posterStatus').className = 'status';
   }
   $('btnPosterClear').disabled = !state.poster;
   renderPreview();
+}
+
+// Laver plakaten ud fra det oprindelige billede i den form, der passer til valget øverst.
+async function applyPoster(){
+  if (!state.posterOrig) return;
+  const kind = posterKindFor(state.mode);
+  const p = makePoster(await loadImage(state.posterOrig), kind);
+  state.posterKind = kind;
+  setPoster(p.url, '<b>' + escapeHtml(state.posterLabel || 'Billede') + '</b><br>' + p.w + ' × ' + p.h + ' pixel');
 }
 
 $('posterInput').addEventListener('change', async (e) => {
@@ -890,17 +976,18 @@ $('posterInput').addEventListener('change', async (e) => {
   const st = $('posterStatus');
   st.textContent = 'Skalerer billede …'; st.className = 'status pending';
   try {
-    const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
-    const p = makePoster(await loadImage(url));
-    setPoster(p.url, '<b>' + escapeHtml(file.name) + '</b><br>' + p.w + ' × ' + p.h + ' pixel');
+    state.posterOrig = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    state.posterLabel = file.name;
+    await applyPoster();
     st.textContent = 'Billede klar'; st.className = 'status';
   } catch(err){
+    state.posterOrig = '';
     st.textContent = 'Filen er ikke et billede, der kan vises.'; st.className = 'status bad';
   }
   e.target.value = '';
 });
 
-$('btnPosterClear').addEventListener('click', () => setPoster('', ''));
+$('btnPosterClear').addEventListener('click', () => { state.posterOrig = ''; setPoster('', ''); });
 
 $('btnThumb').addEventListener('click', () => {
   const id = state.videoId, st = $('posterStatus');
@@ -918,15 +1005,14 @@ $('btnThumb').addEventListener('click', () => {
     const name = names[i++];
     fetch('https://i.ytimg.com/vi/' + id + '/' + name + '.jpg', { mode:'cors' })
       .then(res => { if (!res.ok) throw new Error(); return res.blob(); })
-      .then(blob => {
-        const u = URL.createObjectURL(blob);
-        return loadImage(u).then(img => {
-          URL.revokeObjectURL(u);
-          if (img.naturalWidth < 200) throw new Error();
-          const p = makePoster(img);
-          setPoster(p.url, '<b>Fra YouTube</b> (' + name + ')<br>' + p.w + ' × ' + p.h + ' pixel');
-          st.textContent = 'Billedet er hentet'; st.className = 'status';
-        });
+      .then(async blob => {
+        const d = await blobToDataUrl(blob);
+        const img = await loadImage(d);
+        if (img.naturalWidth < 200) throw new Error();
+        state.posterOrig = d;
+        state.posterLabel = 'Fra YouTube (' + name + ')';
+        await applyPoster();
+        st.textContent = 'Billedet er hentet'; st.className = 'status';
       })
       .catch(next);
   })();
@@ -1049,14 +1135,14 @@ function syncAutoDc(){
   if (!dcTouched.title) $('dcTitle').value = state.title.trim();
   if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.text, 300);
   if (!dcTouched.coverage) $('dcCoverage').value = state.location.trim();
-  if (!dcTouched.type) $('dcType').value = state.mode === 'audio' ? 'Sound' : 'MovingImage';
+  if (!dcTouched.type) $('dcType').value = defaultDcType(state.mode);
   if (!dcTouched.source){
-    $('dcSource').value = state.mode === 'audio' ? state.audioUrl : state.mode === 'videofile' ? state.videoFileUrl : (state.videoId ? watchUrl(state.videoId) : '');
+    $('dcSource').value = isAudioMode(state.mode) ? state.audioUrl : state.mode === 'videofile' ? state.videoFileUrl : (state.videoId ? watchUrl(state.videoId) : '');
   }
   if (!dcTouched.identifier){
     const prefix = AREA_PREFIX[$('dcPublisher').value];
     const name = slugify(state.title, '');
-    const word = state.mode === 'audio' ? 'podcast' : 'video';
+    const word = state.mode === 'picture' ? 'talende' : state.mode === 'audio' ? 'podcast' : 'video';
     $('dcIdentifier').value = (prefix && name) ? (prefix + '-' + word + '-' + name + '-' + new Date().getFullYear()) : '';
   }
 }
@@ -1114,7 +1200,7 @@ function drawnPoster(s, t){
   const fg = rtv ? '#FFFFFF' : t.onAccent;
   const txt = lines.map((l, i) => '<text x="800" y="' + Math.round(startY + i * size * 1.12) + '" font-size="' + size + '">' + escapeHtml(l) + '</text>').join('');
   let deco;
-  if (s.mode === 'audio'){
+  if (isAudioMode(s.mode)){
     // Lydbølge nederst
     const bars = [];
     for (let i = 0; i < 48; i++){
@@ -1228,7 +1314,7 @@ function mediekortRuntime(C){
     function mark(){
       var playing = !audio.paused;
       player.classList.toggle("playing", playing);
-      if (playBtn) playBtn.setAttribute("aria-label", playing ? "Sæt på pause" : "Afspil udsendelsen");
+      if (playBtn) playBtn.setAttribute("aria-label", playing ? "Sæt på pause" : (C.playLabel || "Afspil udsendelsen"));
     }
     audio.addEventListener("play", mark); audio.addEventListener("pause", mark); audio.addEventListener("ended", mark);
     // Det kapitel, man er i, fremhæves.
@@ -1346,6 +1432,47 @@ function mediekortRuntime(C){
     seek(parseInt(b.getAttribute("data-t"), 10) || 0);
   });
 
+  /* --- Talende billede: se billedet i fuld skærm, mens lyden spiller videre --- */
+  var zoomBtn = byId("zoomBtn"), lb = byId("lightbox");
+  if (zoomBtn && lb){
+    var lbImg = byId("lbImg"), lbClose = byId("lbClose"), lbPlay = byId("lbPlay"), lastFocus = null;
+    function lbMark(){
+      var on = audio && !audio.paused;
+      lbPlay.textContent = on ? "Pause" : "Afspil fortællingen";
+    }
+    function openLb(){
+      // Billedet hentes fra plakaten, så det ikke ligger i filen to gange.
+      if (!lbImg.getAttribute("src")) lbImg.src = byId("poster").src;
+      lastFocus = document.activeElement;
+      lb.hidden = false; lb.classList.remove("zoomed");
+      body.classList.add("lb-open");
+      lbMark(); lbClose.focus();
+    }
+    function closeLb(){
+      lb.hidden = true; lb.classList.remove("zoomed");
+      body.classList.remove("lb-open");
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    zoomBtn.addEventListener("click", openLb);
+    lbClose.addEventListener("click", closeLb);
+    lbImg.addEventListener("click", function(e){
+      var zoomed = lb.classList.toggle("zoomed");
+      if (zoomed){
+        // Forstør omkring det sted, man trykkede.
+        var r = lbImg.getBoundingClientRect();
+        var fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+        lb.scrollLeft = Math.max(0, lbImg.offsetWidth * fx - lb.clientWidth / 2);
+        lb.scrollTop = Math.max(0, lbImg.offsetHeight * fy - lb.clientHeight / 2);
+      }
+    });
+    lbPlay.addEventListener("click", function(){
+      if (!audio) return;
+      if (audio.paused){ var p = audio.play(); if (p && p.catch) p.catch(function(){}); } else audio.pause();
+    });
+    if (audio){ audio.addEventListener("play", lbMark); audio.addEventListener("pause", lbMark); audio.addEventListener("ended", lbMark); }
+    document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !lb.hidden) closeLb(); });
+  }
+
   /* --- Udskrift: foldes ud ved udskrivning --- */
   window.addEventListener("beforeprint", function(){
     Array.prototype.forEach.call(document.querySelectorAll("details.udskrift"), function(d){ d.setAttribute("open", ""); });
@@ -1412,15 +1539,26 @@ function buildPageHTML(s, opts){
   const pageLang = (dc.language || 'da').trim() || 'da';
   const pageTitle = s.title || 'Mediekort';
   const fileName = slugify(s.title, 'mediekort') + '.html';
-  const isAudio = s.mode === 'audio';
+  const isPic = s.mode === 'picture';
+  const isAudio = isAudioMode(s.mode);
   const isFile = s.mode === 'videofile';
   const id = s.videoId;
   const watch = id ? watchUrl(id) : '';
   const chapters = parseChapters(s.chaptersRaw).list;
   const textHtml = mdToHtml(s.text);
   const hasTranscript = !!s.transcript.trim();
-  const transTitle = s.transTitle.trim() || 'Læs mere – udskrift af hele udsendelsen';
+  const transTitle = s.transTitle.trim() || (isPic ? 'Læs fortællingen' : 'Læs mere – udskrift af hele udsendelsen');
   const embedded = isAudio && !!s.audioBlob;
+  const omTitle = s.omTitle.trim() || (isPic ? 'Om billedet' : 'Om udsendelsen');
+  const hasTs = chapters.length > 0 || /(^|\n)\s*(?:[-*]\s+)?\[(?:\d{1,2}:)?\d{1,2}:\d{2}/.test(s.transcript);
+  const hasDcBlock = !!dcBlock;
+
+  // Hvad følger faktisk med i filen? Bruges i teksterne ved "Gem filen" og uden internet.
+  function joinDa(arr){ return arr.length > 1 ? arr.slice(0, -1).join(', ') + ' og ' + arr[arr.length - 1] : (arr[0] || ''); }
+  const textParts = [];
+  if (textHtml) textParts.push('beskrivelsen');
+  if (hasTs) textParts.push('tidsstemplerne');
+  if (hasTranscript) textParts.push('udskriften');
 
   const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
   const homeLabel = s.homeLabel.trim() || 'Hjem';
@@ -1437,31 +1575,38 @@ function buildPageHTML(s, opts){
   const posterEl = s.poster
     ? '<img class="poster" id="poster" src="' + s.poster + '" alt="' + escapeHtml(posterAlt) + '">'
     : drawnPoster(s, t);
-  const playLabel = isAudio ? 'Afspil udsendelsen' : 'Afspil videoen';
-  let playerBlock = '<div class="player" id="player">' + posterEl
+  const playLabel = isPic ? 'Afspil fortællingen' : isAudio ? 'Afspil udsendelsen' : 'Afspil videoen';
+  const zoomBlock = (isPic && s.poster)
+    ? '<button class="zoom-btn" id="zoomBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Fuld skærm</span></button>'
+    : '';
+  let playerBlock = '<div class="player' + (isPic ? ' picture' : '') + '" id="player">' + posterEl
     + '<button class="play" id="playBtn" type="button" aria-label="' + playLabel + '"><span>' + ICON_PLAY + (isAudio ? ICON_PAUSE : '') + '</span></button>'
+    + zoomBlock
     + '</div>';
+  const creditBlock = (s.poster && s.posterCredit.trim()) ? '<p class="credit">' + escapeHtml(s.posterCredit.trim()) + '</p>' : '';
+  const offlineRest = textParts.concat(hasDcBlock ? ['arkivoplysningerne'] : []);
+  const offlineTail = offlineRest.length ? ' Alt andet på dette kort – ' + joinDa(offlineRest) + ' – virker stadig.' : ' Resten af kortet virker stadig.';
   if (isFile){
     const posterSrc = s.poster || ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(drawnPoster(s, t)));
     playerBlock = '<div class="player vidfile" id="player"><video id="vid" controls playsinline preload="metadata"'
       + ' aria-label="' + escapeHtml(pageTitle) + '" poster="' + escapeHtml(posterSrc) + '"'
       + (s.videoFileUrl ? ' src="' + escapeHtml(s.videoFileUrl) + '"' : '')
       + '>Din browser kan ikke afspille video.</video></div>'
-      + '<p class="fallback"><span class="media-err">Videoen kunne ikke hentes lige nu. </span>'
+      + creditBlock + '<p class="fallback"><span class="media-err">Videoen kunne ikke hentes lige nu. </span>'
       + (s.videoFileUrl ? '<a href="' + escapeHtml(s.videoFileUrl) + '" target="_blank" rel="noopener">Åbn videofilen for sig selv</a>' : '') + '</p>'
-      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu.' + offlineTail + '</div>';
   } else if (isAudio){
     // Samme afspiller som i Lydfortælling · Bygger: rund afspil-knap, streg-bjælke,
     // tider og "Du er nået til …" med Start forfra.
     const durTxt = s.audioDuration ? fmtClock(s.audioDuration) : '0:00';
-    playerBlock += '<div class="audiobox" id="audiobox">'
+    playerBlock += creditBlock + '<div class="audiobox" id="audiobox">'
       + '<div class="player-row">'
       + '<button class="playbtn" id="barPlay" type="button" aria-label="Afspil">'
       + '<svg class="b-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>'
       + '<svg class="b-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>'
       + '</button>'
       + '<div class="scrubwrap">'
-      + '<div class="ticks" id="ticks" tabindex="0" role="slider" aria-label="Hvor langt i udsendelsen" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00"></div>'
+      + '<div class="ticks" id="ticks" tabindex="0" role="slider" aria-label="' + (isPic ? 'Hvor langt i fortællingen' : 'Hvor langt i udsendelsen') + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00"></div>'
       + '<div class="times"><span id="curTime">0:00</span><span id="durTime">' + durTxt + '</span></div>'
       + '</div></div>'
       + '<div class="resume" id="resumeBar"><span>Du er nået til <strong id="resumeTime">0:00</strong></span>'
@@ -1475,11 +1620,11 @@ function buildPageHTML(s, opts){
       + (embedded ? 'Lyden ligger inde i denne fil og kan afspilles uden internet. ' : '')
       + '<span class="media-err">Lyden kunne ikke hentes lige nu. </span>'
       + links.join('') + '</p>';
-    if (!embedded) playerBlock += '<div class="offline" role="status">Du er ikke på internettet, så lyden kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+    if (!embedded) playerBlock += '<div class="offline" role="status">Du er ikke på internettet, så lyden kan ikke afspilles lige nu.' + offlineTail + '</div>';
   } else {
-    playerBlock += '<p class="fallback"><span class="lokal">Kortet er åbnet fra din egen computer, så videoen afspilles på YouTube i et nyt vindue. </span>'
+    playerBlock += creditBlock + '<p class="fallback"><span class="lokal">Kortet er åbnet fra din egen computer, så videoen afspilles på YouTube i et nyt vindue. </span>'
       + 'Virker afspilleren ikke? <a id="ytLink" href="' + escapeHtml(watch || '#') + '" target="_blank" rel="noopener">Åbn videoen på YouTube</a>.</p>'
-      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu. Alt andet på dette kort – beskrivelse, tidsstempler, udskrift og arkivoplysninger – virker stadig.</div>';
+      + '<div class="offline" role="status">Du er ikke på internettet, så videoen kan ikke afspilles lige nu.' + offlineTail + '</div>';
   }
 
   /* Om og kapitler */
@@ -1488,7 +1633,7 @@ function buildPageHTML(s, opts){
   if (hasOm || hasKap){
     colsBlock += '<div class="cols' + (hasOm && hasKap ? ' two' : '') + '">';
     if (hasOm){
-      colsBlock += '<section class="om" aria-labelledby="om"><h2 id="om" class="minor">Om udsendelsen</h2>'
+      colsBlock += '<section class="om" aria-labelledby="om"><h2 id="om" class="minor">' + escapeHtml(omTitle) + '</h2>'
         + textHtml + (s.note.trim() ? '<p class="note">' + escapeHtml(s.note.trim()) + '</p>' : '') + '</section>';
     }
     if (hasKap){
@@ -1511,12 +1656,18 @@ function buildPageHTML(s, opts){
   ctas.forEach(c => ctaParts.push('<a class="cta-btn" href="' + escapeHtml(c.url.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(c.text.trim()) + '</a>'));
   const ctaBlock = ctaParts.length ? '<div class="cta-wrap">' + ctaParts.join('') + '</div>' : '';
 
-  const saveNote = isFile
-    ? 'Et mediekort med en video. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Videoen hentes fra nettet.'
-    : isAudio
-    ? (embedded ? 'Et mediekort med en podcast. Gemmer hele kortet som én fil på din egen computer – lyden, beskrivelsen, tidsstemplerne og udskriften følger med.'
-                : 'Et mediekort med en podcast. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Lyden hentes fra nettet.')
-    : 'Et mediekort med en video. Gemmer kortet som én fil på din egen computer – beskrivelse, tidsstempler og udskrift følger med. Videoen bliver på YouTube.';
+  // Teksten nævner kun det, der faktisk ligger i filen.
+  const saveParts = [];
+  if (embedded) saveParts.push('lyden');
+  if (s.poster) saveParts.push('billedet');
+  const allParts = saveParts.concat(textParts);
+  const kindTxt = isPic ? 'Et talende billede.' : isAudio ? 'Et mediekort med en podcast.' : 'Et mediekort med en video.';
+  const whole = isAudio && embedded;
+  const remoteTxt = isFile ? ' Videoen hentes fra nettet.'
+    : s.mode === 'video' ? ' Videoen bliver på YouTube.'
+    : (isAudio && !embedded) ? ' Lyden hentes fra nettet.' : '';
+  const saveNote = kindTxt + ' Gemmer ' + (whole ? 'det hele' : 'kortet') + ' som én fil på din egen computer'
+    + (allParts.length ? ' – ' + joinDa(allParts) + ' følger med.' : '.') + remoteTxt;
   const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button class="save-btn" id="dlBtn" type="button">'
     + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
     + '<span>Gem filen</span></button></div><p class="save-note">' + saveNote + '</p>';
@@ -1529,7 +1680,7 @@ function buildPageHTML(s, opts){
 
   const metaLine = [];
   if (s.location.trim()) metaLine.push(escapeHtml(s.location.trim()));
-  if (s.audioDuration && isAudio) metaLine.push('Varighed ' + fmtDuration(s.audioDuration));
+  if (s.audioDuration && isAudio) metaLine.push(isPic ? 'Fortælling ' + fmtClock(s.audioDuration) : 'Varighed ' + fmtDuration(s.audioDuration));
   if (s.videoDuration && isFile) metaLine.push('Varighed ' + fmtDuration(s.videoDuration));
   const dotsBlock = s.theme === 'roskildetv'
     ? '<div class="dots" aria-hidden="true">' + RTV_DOTS.map(c => '<i style="background:' + c + '"></i>').join('') + '</div>' : '';
@@ -1542,7 +1693,8 @@ function buildPageHTML(s, opts){
     audioUrl: isAudio ? s.audioUrl : '', audioEmbedded: embedded, audioName: embedded ? s.audioName : '',
     audioDuration: isAudio ? Math.round(s.audioDuration || 0) : 0,
     kicker: s.kicker, title: s.title, location: s.location, shareImage: s.shareImage,
-    posterAlt: s.posterAlt, hasPoster: !!s.poster,
+    posterAlt: s.posterAlt, posterCredit: s.posterCredit, hasPoster: !!s.poster,
+    omTitle: s.omTitle,
     text: s.text, note: s.note, chapters: chapters,
     transcriptTitle: s.transTitle, transcript: s.transcript,
     ctas: s.ctas,
@@ -1554,7 +1706,8 @@ function buildPageHTML(s, opts){
 
   const ogDesc = stripMdToPlain(s.text, 200);
   const shareUrl = s.shareImage.trim();
-  const runtimeConfig = { storeKey: 'mediekort:' + (dc.identifier || fileName) + ':pos', mode: s.mode, id: s.mode === 'video' ? id : '', title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
+  // Et talende billede afspilles af den samme lydafspiller som en podcast.
+  const runtimeConfig = { storeKey: 'mediekort:' + (dc.identifier || fileName) + ':pos', mode: isAudio ? 'audio' : s.mode, playLabel: playLabel, id: s.mode === 'video' ? id : '', title: pageTitle, filename: fileName, homeMode: homeMode, homeUrl: homeUrl };
   const taellerBlock = (s.taellerBlock && !isPreview) ? s.taellerBlock + '\n' : '';
   const aT = lighten(t.accent, 0.5);
 
@@ -1566,7 +1719,7 @@ function buildPageHTML(s, opts){
 + '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
 + (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
 + (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
-+ (s.poster ? '<link rel="icon" href="' + s.poster + '">\n' : '')
++ ((s.favicon || s.poster) ? '<link rel="icon" href="' + (s.favicon || s.poster) + '">\n' : '')
 + (dcMeta ? dcMeta + '\n' : '')
 + '<script type="application/json" id="builder-source-data">\n' + sourceJson + '\n<\/script>\n'
 + '<style>\n'
@@ -1626,6 +1779,26 @@ function buildPageHTML(s, opts){
 + '.player.playing .play .i-play{display:none;}\n'
 + '.player.playing .play .i-pause{display:block;}\n'
 + '.player.playing .play span{opacity:.55;}\n'
++ (!isPic ? '' : ''
++ '.player.picture{aspect-ratio:auto;}\n'
++ '.player.picture img.poster{position:relative; inset:auto; display:block; width:100%; height:auto; max-height:82vh; object-fit:contain;}\n'
++ '.player.picture.playing .play span{opacity:.3;}\n'
++ '.zoom-btn{position:absolute; top:10px; right:10px; z-index:2; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 15px 8px 12px; border-radius:999px; border:2px solid rgba(255,255,255,.8); background:rgba(0,0,0,.6); color:#fff; font-size:0.85em; font-weight:700; cursor:pointer;}\n'
++ '.zoom-btn svg{width:20px; height:20px;}\n'
++ '.zoom-btn:hover{background:rgba(0,0,0,.8);}\n'
++ '.zoom-btn:focus-visible{outline:3px solid #fff; outline-offset:2px;}\n'
++ '.lightbox{position:fixed; inset:0; z-index:100; background:#111; display:flex; overflow:auto;}\n'
++ '.lightbox[hidden]{display:none;}\n'
++ '.lightbox img{margin:auto; max-width:100%; max-height:100%; display:block; cursor:zoom-in;}\n'
++ '.lightbox.zoomed img{max-width:none; max-height:none; cursor:zoom-out;}\n'
++ '.lb-bar{position:fixed; top:0; left:0; right:0; z-index:101; display:flex; justify-content:space-between; gap:10px; padding:12px; pointer-events:none;}\n'
++ '.lb-bar button{pointer-events:auto; min-height:48px; padding:0 20px; border-radius:999px; border:2px solid #fff; background:rgba(0,0,0,.7); color:#fff; font-size:17px; font-weight:700; cursor:pointer;}\n'
++ '.lb-bar button:hover{background:#000;}\n'
++ '.lb-bar button:focus-visible{outline:3px solid #fff; outline-offset:3px;}\n'
++ '.lb-hint{position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:101; background:rgba(0,0,0,.7); color:#eee; padding:7px 16px; border-radius:999px; font-size:15px; pointer-events:none; text-align:center; max-width:calc(100% - 32px);}\n'
++ '.lightbox.zoomed .lb-hint{display:none;}\n'
++ 'body.lb-open{overflow:hidden;}\n')
++ '.credit{font-size:0.8em; color:var(--muted); margin:6px 2px 0; text-align:right;}\n'
 + '.audiobox{position:sticky; top:64px; z-index:20; background:var(--accent); color:var(--on-accent); border-radius:12px; padding:14px 16px 16px; margin-top:12px; box-shadow:0 4px 14px var(--shadow);}\n'
 + '.audiobox audio{display:none;}\n'
 + '.player-row{display:flex; align-items:center; gap:14px;}\n'
@@ -1707,7 +1880,7 @@ function buildPageHTML(s, opts){
 + '#toTop.show{opacity:1; pointer-events:auto;}\n'
 + '#toTop svg{width:22px; height:22px; margin:0 auto; display:block;}\n'
 + '@media (prefers-reduced-motion:reduce){ *{transition:none !important;} }\n'
-+ '@media print{ .site-head, #toTop, .play, .audiobox, .fallback, .offline, .save-wrap, .save-note, .cta-wrap{display:none !important;} body{background:#fff;} .udskrift-body{font-size:0.95em;} }\n'
++ '@media print{ .site-head, #toTop, .play, .zoom-btn, .lightbox, .audiobox, .fallback, .offline, .save-wrap, .save-note, .cta-wrap{display:none !important;} body{background:#fff;} .udskrift-body{font-size:0.95em;} }\n'
 + '</style>\n</head>\n<body>\n'
 + '<header class="site-head">\n<div class="head-inner">\n'
 + homeBlock
@@ -1724,6 +1897,12 @@ function buildPageHTML(s, opts){
 + (metaLine.length ? '<p class="metaline">' + metaLine.join(' · ') + '</p>' : '')
 + '\n' + playerBlock + '\n' + colsBlock + '\n' + transBlock + '\n' + ctaBlock + saveBlock + dcBlock
 + '\n</main>\n' + footBlock
++ ((isPic && s.poster)
+  ? '<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="' + escapeHtml(posterAlt) + ' – fuld skærm" hidden>'
+    + '<div class="lb-bar"><button type="button" id="lbPlay">Afspil fortællingen</button><button type="button" id="lbClose">Luk &#10005;</button></div>'
+    + '<img id="lbImg" alt="' + escapeHtml(posterAlt) + '">'
+    + '<p class="lb-hint">Tryk på billedet for at se det tættere på</p></div>\n'
+  : '')
 + '<button id="toTop" type="button" aria-label="Til toppen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>\n'
 + taellerBlock
 + '<script>\n(' + mediekortRuntime.toString() + ')(' + JSON.stringify(runtimeConfig).replace(/</g, '\\u003c') + ');\n<\/script>\n'
@@ -1740,6 +1919,8 @@ function readForm(){
   state.location = $('fLocation').value;
   state.shareImage = $('fShare').value;
   state.posterAlt = $('fPosterAlt').value;
+  state.posterCredit = $('fPosterCredit').value;
+  state.omTitle = $('fOmTitle').value;
   state.text = $('fText').value;
   state.note = $('fNote').value;
   state.chaptersRaw = $('fChapters').value;
@@ -1757,6 +1938,7 @@ function readForm(){
 }
 
 function hasMedia(){
+  if (state.mode === 'picture') return !!((state.audioUrl || state.audioBlob) && state.poster);
   if (state.mode === 'audio') return !!(state.audioUrl || state.audioBlob);
   if (state.mode === 'videofile') return !!state.videoFileUrl;
   return !!state.videoId;
@@ -1764,7 +1946,8 @@ function hasMedia(){
 
 function updateSizeBar(){
   let n = state.poster.length * 0.75 + (state.transcript.length + state.text.length) * 1.05;
-  if (state.mode === 'audio' && state.audioBlob) n += state.audioBlob.size * 4 / 3;
+  if (isAudioMode(state.mode) && state.audioBlob) n += state.audioBlob.size * 4 / 3;
+  n += state.favicon.length * 0.75;
   const mb = n / (1024*1024);
   const bar = $('sizeBar');
   bar.className = 'sizebar' + (mb > 80 ? ' over' : (mb > 25 ? ' warn' : ''));
@@ -1787,19 +1970,34 @@ function updateChapCheck(){
 }
 
 function setMode(mode){
-  state.mode = (mode === 'audio' || mode === 'videofile') ? mode : 'video';
+  state.mode = (mode === 'audio' || mode === 'videofile' || mode === 'picture') ? mode : 'video';
+  const isPic = state.mode === 'picture';
   document.querySelectorAll('#modePicker input').forEach(r => { r.checked = (r.value === state.mode); });
   document.querySelectorAll('#modePicker .mode-option').forEach(o => o.classList.toggle('selected', o.dataset.mode === state.mode));
   $('videoFields').hidden = state.mode !== 'video';
-  $('audioFields').hidden = state.mode !== 'audio';
+  $('audioFields').hidden = !isAudioMode(state.mode);
   $('videoFileFields').hidden = state.mode !== 'videofile';
+  $('picAudioTip').hidden = !isPic;
+  $('picTransTip').hidden = !isPic;
   $('shareYtRow').hidden = state.mode !== 'video';
   $('btnThumb').hidden = state.mode !== 'video';
+  $('fOmTitle').placeholder = isPic ? 'Om billedet' : 'Om udsendelsen';
+  $('fTransTitle').placeholder = isPic ? 'Læs fortællingen' : 'Læs mere – udskrift af hele udsendelsen';
+  $('posterHint').textContent = isPic
+    ? 'Billedet er hovedsagen. Det beholder sin egen form – også højformat – og gemmes i op til 2000 px, så detaljerne kan ses i fuld skærm. Et lille ikon til browserfanen laves automatisk.'
+    : 'Vises øverst på kortet og virker også uden internet. Billedet beskæres til bredformat (16:9) og skaleres til højst 1600 px. Et lille ikon til browserfanen laves automatisk.';
+  if (!state.poster){ $('posterStatus').textContent = noPosterText(); }
   $('previewNote').textContent = state.mode === 'video'
     ? 'I forhåndsvisningen åbner afspil og tidsstempler videoen på YouTube i et nyt vindue. Lagt på en hjemmeside afspiller kortet videoen direkte på siden.'
     : state.mode === 'videofile'
     ? 'Videoen kan afspilles direkte her i forhåndsvisningen, og tidsstemplerne virker. Det gør de også, når kortet åbnes fra din egen computer — så længe der er internet.'
+    : isPic
+    ? 'Tryk på billedet for at afspille fortællingen. Knappen Fuld skærm viser billedet stort, mens lyden spiller videre.'
     : 'Lyden kan afspilles direkte her i forhåndsvisningen, og tidsstemplerne virker. Det gør de også, når kortet åbnes fra din egen computer.';
+  // Skifter man mellem bredformat og talende billede, laves billedet om fra originalen.
+  if (state.posterOrig && state.posterKind !== posterKindFor(state.mode)){
+    applyPoster().catch(() => {});
+  }
   renderPreview();
 }
 
@@ -1815,7 +2013,7 @@ let previewTimer = null;
 function schedulePreview(){
   clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
-    $('previewFrame').srcdoc = buildPageHTML(state, { preview:true, audioSrc: state.mode === 'audio' ? (state.audioBlobUrl || state.audioUrl) : '' });
+    $('previewFrame').srcdoc = buildPageHTML(state, { preview:true, audioSrc: isAudioMode(state.mode) ? (state.audioBlobUrl || state.audioUrl) : '' });
   }, 200);
 }
 function renderPreview(){
@@ -1842,7 +2040,7 @@ function onUrlInput(){
   renderPreview();
 }
 
-['fKicker','fTitle','fLocation','fShare','fPosterAlt','fText','fNote','fTransTitle','fTranscript',
+['fKicker','fTitle','fLocation','fShare','fPosterAlt','fPosterCredit','fOmTitle','fText','fNote','fTransTitle','fTranscript',
  'cta1text','cta1url','cta2text','cta2url','cta3text','cta3url',
  'homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
   const el = $(id);
@@ -1910,12 +2108,12 @@ function fillDcFields(dc){
       if (key === 'format') v = 'text/html';
       else if (key === 'language') v = 'da';
     }
-    if (key === 'type' && !v) v = state.mode === 'audio' ? 'Sound' : 'MovingImage';
+    if (key === 'type' && !v) v = defaultDcType(state.mode);
     el.value = v;
     if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
   });
   // Type følger stadig valget af video/lyd, hvis den står på det forventede.
-  dcTouched.type = $('dcType').value !== (state.mode === 'audio' ? 'Sound' : 'MovingImage');
+  dcTouched.type = $('dcType').value !== defaultDcType(state.mode);
 }
 
 $('loadPage').addEventListener('change', async (e) => {
@@ -1935,7 +2133,7 @@ $('loadPage').addEventListener('change', async (e) => {
     if (!data.builderVersion || data.builderVersion < BUILDER_VERSION) return reject('Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.');
 
     selectTheme(data.theme || 'original');
-    state.mode = (data.mode === 'audio' || data.mode === 'videofile') ? data.mode : 'video';
+    state.mode = (data.mode === 'audio' || data.mode === 'videofile' || data.mode === 'picture') ? data.mode : 'video';
 
     $('fUrl').value = data.videoUrl || (data.videoId ? watchUrl(data.videoId) : '');
     state.videoId = parseYouTube($('fUrl').value);
@@ -1951,6 +2149,8 @@ $('loadPage').addEventListener('change', async (e) => {
     $('fLocation').value = data.location || '';
     $('fShare').value = data.shareImage || '';
     $('fPosterAlt').value = data.posterAlt || '';
+    $('fPosterCredit').value = data.posterCredit || '';
+    $('fOmTitle').value = data.omTitle || '';
     $('fText').value = data.text || '';
     $('fNote').value = data.note || '';
     $('fChapters').value = chaptersToText(data.chapters);
@@ -1973,9 +2173,14 @@ $('loadPage').addEventListener('change', async (e) => {
     const pSrc = pImg ? (pImg.getAttribute('src') || '') : '';
     if (pSrc.indexOf('data:image/') === 0){
       const img = await loadImage(pSrc);
+      // Billedet bruges som det er; det laves kun om, hvis man skifter mellem bredformat og talende billede.
+      state.posterOrig = pSrc;
+      state.posterLabel = 'Fra den indlæste fil';
+      state.posterKind = posterKindFor(state.mode);
       setPoster(pSrc, '<b>Fra den indlæste fil</b><br>' + img.naturalWidth + ' × ' + img.naturalHeight + ' pixel');
       $('posterStatus').textContent = 'Billede indlæst fra fil'; $('posterStatus').className = 'status';
     } else {
+      state.posterOrig = '';
       setPoster('', '');
     }
     const aEl = doc.getElementById('lyd');
@@ -1992,7 +2197,7 @@ $('loadPage').addEventListener('change', async (e) => {
     updateChapCheck();
     setMode(state.mode);
     if (state.mode === 'video') onUrlInput();
-    if (state.mode === 'audio' && state.audioUrl) testAudioUrl();
+    if (isAudioMode(state.mode) && state.audioUrl) testAudioUrl();
     if (state.mode === 'videofile' && state.videoFileUrl) testMedia('videofile');
 
     st.textContent = 'Indlæst: ' + file.name
@@ -2041,12 +2246,17 @@ $('generateBtn').addEventListener('click', async () => {
   try {
     readForm(); syncAutoDc();
     if (!hasMedia()){
-      msg.textContent = state.mode === 'audio' ? 'Skriv adressen på lydfilen, eller vælg en lydfil, først.' : state.mode === 'videofile' ? 'Skriv adressen på videofilen først.' : 'Skriv adressen på YouTube-videoen først.';
+      msg.textContent = state.mode === 'picture' ? 'Et talende billede skal have både et billede og en lydfil.'
+        : state.mode === 'audio' ? 'Skriv adressen på lydfilen, eller vælg en lydfil, først.' : state.mode === 'videofile' ? 'Skriv adressen på videofilen først.' : 'Skriv adressen på YouTube-videoen først.';
       msg.className = 'msg err';
       return;
     }
+    // Sørg for, at det lille ikon er klar, før filen skrives.
+    if (state.poster && !state.favicon){
+      try { state.favicon = makeIcon(await loadImage(state.poster)); } catch(e){}
+    }
     let audioSrc = '';
-    if (state.mode === 'audio'){
+    if (isAudioMode(state.mode)){
       if (state.audioBlob){
         btn.disabled = true;
         msg.textContent = 'Lægger lyden ind i filen … det kan tage et øjeblik.';
@@ -2062,10 +2272,12 @@ $('generateBtn').addEventListener('click', async () => {
     const warn = [];
     if (!dc.publisher) warn.push('udgiver');
     if (!dc.description) warn.push('beskrivelse');
-    msg.textContent = 'Mediekortet er gemt som ' + name + ' (' + fmtBytes(blob.size) + '). Det kan åbnes direkte i browseren.'
+    const noTrans = state.mode === 'picture' && !state.transcript.trim();
+    msg.textContent = (state.mode === 'picture' ? 'Det talende billede' : 'Mediekortet') + ' er gemt som ' + name + ' (' + fmtBytes(blob.size) + '). Det kan åbnes direkte i browseren.'
       + (warn.length ? ' Bemærk: uden ' + warn.join(' og ') + ' er kortet sværere at finde i søgesiden.' : '')
+      + (noTrans ? ' Fortællingen er ikke skrevet ned under «Læs mere», så døve og hørehæmmede får den ikke med.' : '')
       + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig i filen.' : '');
-    msg.className = 'msg ' + (warn.length ? 'err' : 'ok');
+    msg.className = 'msg ' + ((warn.length || noTrans) ? 'err' : 'ok');
   } catch(err){
     msg.textContent = 'Der gik noget galt: ' + err.message;
     msg.className = 'msg err';

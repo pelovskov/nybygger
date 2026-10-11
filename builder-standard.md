@@ -1,7 +1,7 @@
 # Builder-standard
 
 **Fælles specifikation for værktøjskassen**
-Version 1.5 · oktober 2026
+Version 1.6 · oktober 2026
 
 Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.5).
 Når noget er i tvivl, er det referencefilen der gælder.
@@ -20,7 +20,7 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | Bogbygger | e-bog / lydbog | Text |
 | Enkeltbillede · Bygger | ét billede i høj kvalitet med tekst og Exif | Image |
 | Før og Nu · Bygger | to billeder fra samme sted med slider | Image |
-| Mediekort · Bygger | kort til en video (YouTube) eller en podcast, med kapitler og evt. transskription | MovingImage (video), Sound (podcast) |
+| Mediekort · Bygger | kort til en video (YouTube eller videofil), en podcast eller et talende billede, med kapitler og evt. transskription | MovingImage (video), Sound (podcast og talende billede) |
 | Præsentation · Bygger | billedshow til foredrag og oplæg, med pile, fuld skærm og automatisk visning | Image |
 | Samling · Bygger | forside der binder 2-6 færdige filer sammen til en kurateret samling | Collection |
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
@@ -28,7 +28,9 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
 | Metadata-hjælper | ingen fil; laver en AI-prompt til Dublin Core og kontrollerer svaret (se afsnit 11) | - |
 
-Bragt i overensstemmelse med standarden: Sidebygger (v1.5), Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2), Præsentation · Bygger (v1.0, `praesentation-bygger.html`, følger 1.4) og Samling · Bygger (v2.0, `samlingsbygger.html`, følger 1.5).
+Bragt i overensstemmelse med standarden: Sidebygger (v1.5), Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2), Præsentation · Bygger (v1.0, `praesentation-bygger.html`, følger 1.4), Samling · Bygger (v2.0, `samlingsbygger.html`, følger 1.5) og Mediekort · Bygger (v1.2, `mediekort-bygger.html`, følger 1.6).
+
+Den Talende Booklet er udgået. Dens opgave, ét billede med lyd og tekst, løses nu af Mediekort · Bygger med typen **Talende billede**.
 
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
@@ -265,7 +267,7 @@ Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stav
 
 Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". Status ved indlæsning nævner rettelsen. Står der et helt ukendt navn, vises det som ekstra valg markeret "ikke på listen", så det ikke går tabt, men kan rettes.
 
-**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video, praesentation, samling). Forslaget kan overskrives.
+**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video, podcast, talende, praesentation, samling). Mediekort · Bygger bruger `video` til video og videofil, `podcast` til podcast og `talende` til et talende billede, fx `SFB-talende-bager-hansens-butik-2026`. Forslaget kan overskrives.
 
 **dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje" og "Steder, institutioner og mennesker") indsætter serien som andet emneord.
 
@@ -312,7 +314,7 @@ Hver genereret fil indeholder en JSON-blok, der gør filen redigerbar igen:
 ### 5.2 Øvrigt indhold i `<head>`
 
 - og:type, og:title, og:description altid. og:image + twitter:card kun hvis **Webadresse til delingsbillede** er udfyldt.
-- `<link rel="icon">` sat til det indlejrede billede.
+- `<link rel="icon">` sat til det indlejrede billede. Byggeren laver helst et lille ikon (fx 64 × 64 px) ud fra billedet, så det store billede ikke ligger i filen to gange.
 
 ### 5.3 Hjem-knap
 
@@ -406,6 +408,8 @@ Undtagelse: Præsentation · Bygger gemmer billederne i **2560 px** og kvalitet 
 
 Undtagelse: Samling · Bygger gemmer miniaturerne på kortene i **800 px** og kvalitet **0,82**, fordi de kun vises i lille størrelse. Forsidebilledet følger 1600 px / 0,82.
 
+Undtagelse: Mediekort · Bygger gemmer billedet til et **talende billede** i op til **2000 px** på den længste led og kvalitet **0,85**, i billedets egen form (ingen beskæring til 16:9), fordi billedet er hovedsagen og skal kunne ses i fuld skærm. Til video og podcast beskæres plakatbilledet til 16:9 og følger 1600 px / 0,82.
+
 Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 
 Billederne behandles ét ad gangen, så computeren ikke går i stå, når man vælger mange store billeder på én gang. Rækkefølgen følger det valgte.
@@ -453,7 +457,7 @@ Regler:
 - [ ] Afkrydsningstekster med almindelige bogstaver, ikke versaler
 - [ ] De fem temaer med `THEMES` kopieret uændret fra afsnit 3
 - [ ] Indlæsning af egne filer med pæn afvisning af fremmede filer, andre formater og ældre builderVersion
-- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede og Præsentation)
+- [ ] Billeder 1600 px / 0,82 (undtagelserne står i afsnit 8)
 - [ ] Alt-tekstfelt pr. billede
 - [ ] Sidecar-filer læses efter 8.1 (hvor appen tager imod billeder)
 
@@ -580,6 +584,13 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 ## 12. Ændringslog
 
+**Version 1.6 — oktober 2026.**
+- Mediekort · Bygger v1.2 har fået typen **Talende billede**: ét billede i god kvalitet med en kort, indtalt fortælling (30 sek. – 3 min.), fuld skærm-visning og dc.type Sound. Den Talende Booklet er udgået.
+- Mediekort · Bygger v1.2 er bragt i overensstemmelse med standarden. builderVersion er stadig 1, fordi ændringerne er tilføjelser; tidligere mediekort kan indlæses.
+- Afsnit 8: undtagelse for talende billede med 2000 px / 0,85 i billedets egen form.
+- Afsnit 4.1: typeordene `podcast` og `talende` til dc.identifier. Det åbne punkt om Mediekort · Byggerens typeord er afgjort.
+- Afsnit 5.2: `<link rel="icon">` laves helst som et lille ikon, så billedet ikke ligger i filen to gange.
+
 **Version 1.5 — oktober 2026.**
 - Ny bygger i oversigten: Samling · Bygger (v2.0), der laver en forside til 2-6 færdige filer. dc.type er Collection.
 - Afsnit 4.1: typeordet `samling` til dc.identifier, fx `SFB-samling-masser-at-kigge-paa-2026`.
@@ -635,5 +646,4 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 **Afklares, når byggeren tages op:**
 - dc.type for Henvisning, Vejledning og PWA.
-- Kort typeord i dc.identifier for Mediekort · Bygger: "video" for video, og hvilket ord for podcast (fx "podcast" eller "lyd").
 - Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger, Album · Bygger og Præsentation · Bygger har begge dele.
