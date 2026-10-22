@@ -1,9 +1,9 @@
 # Builder-standard
 
 **Fælles specifikation for værktøjskassen**
-Version 1.1 · september 2026
+Version 1.4 · oktober 2026
 
-Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.3).
+Referenceimplementering: **Sidebygger** (`sidebygger-hs.html`, version 1.4).
 Når noget er i tvivl, er det referencefilen der gælder.
 
 ---
@@ -20,14 +20,20 @@ Værktøjskassen består af flere små, uafhængige builder-apps:
 | Bogbygger | e-bog / lydbog | Text |
 | Enkeltbillede · Bygger | ét billede i høj kvalitet med tekst og Exif | Image |
 | Før og Nu · Bygger | to billeder fra samme sted med slider | Image |
-| Videokort · Bygger | kort til en YouTube-udsendelse med kapitler | MovingImage |
+| Mediekort · Bygger | kort til en video (YouTube) eller en podcast, med kapitler og evt. transskription | MovingImage (video), Sound (podcast) |
+| Præsentation · Bygger | billedshow til foredrag og oplæg, med pile, fuld skærm og automatisk visning | Image |
 | Henvisning · Bygger | "skilt" der sender videre til en ekstern side | afklares |
 | Vejledningsbygger | trin-for-trin vejledning | afklares |
 | PWA · Bygger | samler færdige filer til en app til hjemmeskærmen | afklares |
+| Metadata-hjælper | ingen fil; laver en AI-prompt til Dublin Core og kontrollerer svaret (se afsnit 11) | - |
+
+Bragt i overensstemmelse med standarden: Sidebygger (v1.4), Album · Bygger (v3.0, `albumbygger-dc-v3.html`, følger 1.2) og Præsentation · Bygger (v1.0, `praesentation-bygger.html`, følger 1.4).
 
 De løser hver sin opgave, men skal se ens ud, opføre sig ens og producere filer med samme metadata-struktur. Det er kun de dele, dette dokument beskriver. Alt andet må gerne være appspecifikt.
 
 Vejledningsbygger og PWA · Bygger afviger bevidst på enkelte punkter, fordi de ikke laver indhold på samme måde som de andre. Afvigelserne skal stå i appens egen beskrivelse.
+
+Metadata-hjælper laver ingen outputfil og har derfor hverken temaer, forhåndsvisning af en side, indlæsning eller afsnit 5. Den følger standarden for builderens udseende (afsnit 2 og 3), `PUBLISHERS`, dc.type-listen og de 15 felter i afsnit 4.
 
 Ældre filer, der er lavet før en bygger blev bragt i overensstemmelse med standarden, laves om i den nye bygger. Byggerne skal ikke bære rundt på kode til at forstå gamle formater.
 
@@ -78,7 +84,9 @@ Grid: `1fr 420px`, falder til én kolonne under 900 px.
 
 Forhåndsvisningen opdateres ved hvert tastetryk (`renderPreview()`) og bygges med samme funktion som den endelige fil, ellers driver de fra hinanden. Tællerkoden udelades bevidst i forhåndsvisningen.
 
-Topbarens overskrift er appens navn i Georgia 25 px. Versionsnummeret står i underlinjen, fx "… · kører lokalt, ingen server · version 1.3". Browserfanens `<title>` er appens navn.
+Apps med mange eller store billeder må tegne selve rammen med en kort forsinkelse (højst 0,3 sekund), så skrivningen ikke bliver tung. Felter, Dublin Core og størrelsesvisning opdateres stadig med det samme. Forhåndsvisningen må også vise et begrænset antal billeder (Album · Bygger viser de første 24) med en kort note om, at alle kommer med i den færdige fil.
+
+Topbarens overskrift er appens navn i Georgia 25 px. Versionsnummeret står i underlinjen, fx "… · kører lokalt, ingen server · version 1.4". Browserfanens `<title>` er appens navn.
 
 ### Rækkefølge af felter
 
@@ -135,9 +143,11 @@ Fem temaer, samme nøgler og samme værdier i alle apps. Vælges med store farve
 |---|---|---|
 | `original` | Oprindeligt | #9A4630 |
 | `historisk` | Historisk Samfund | #385261 |
-| `lokalhistorisk2` | Lokalhistorisk (bordeaux) | #9E2453 |
+| `lokalhistorisk2` | Lokalhistorisk | #9E2453 |
 | `roedekors` | Røde Kors | #E30A0B |
 | `roskildetv` | Roskilde TV | #B03035 |
+
+`label` i `THEMES` er temaets fulde beskrivelse. Vælgeren viser det korte navn fra tabellen, så knapperne kan stå på én linje.
 
 Den fulde definition kopieres uændret ind i hver bygger:
 
@@ -186,7 +196,7 @@ const THEMES = {
 };
 ```
 
-Roskilde TV's farveprik i vælgeren er flerfarvet (logoets seks prikfarver). Videokort · Bygger må desuden vise prikrækken i selve kortet.
+Roskilde TV's farveprik i vælgeren er flerfarvet (logoets seks prikfarver). Mediekort · Bygger må desuden vise prikrækken i selve kortet.
 
 Temaet skrives ud som CSS-variabler i `:root` i den genererede fil, aldrig som faste farver inde i reglerne. Kommer et nyt tema til, tilføjes det her først og kopieres derefter til alle byggere.
 
@@ -252,7 +262,7 @@ Værdierne gengives tegn for tegn, med **almindelig bindestreg**. Afvigende stav
 
 Indlæses en fil med en gammel værdi, rettes den til den gældende: tankestreg bliver til bindestreg, og "Røde Kors Roskilde" bliver til "Røde Kors". Status ved indlæsning nævner rettelsen. Står der et helt ukendt navn, vises det som ekstra valg markeret "ikke på listen", så det ikke går tabt, men kan rettes.
 
-**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026`. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video). Forslaget kan overskrives.
+**dc.identifier** foreslås automatisk som `PRÆFIKS-type-titelslug-år`, fx `SFB-side-astersvej-2026` eller `SFB-album-skomagervaerkstedet-paa-algade-2026`. Titelslug laves efter reglen i 5.6. `type` er et kort, fast ord for appen (side, lyd, album, bog, billede, foernu, video, praesentation). Forslaget kan overskrives.
 
 **dc.subject:** udgiveren står som første emneord. En app med faste serier (fx Sidebyggerens "Gader og veje" og "Steder, institutioner og mennesker") indsætter serien som andet emneord.
 
@@ -313,7 +323,7 @@ Knaptekst (standard "Hjem") og adresse (standard `index.html`) kan ændres. En a
 
 ### 5.4 Nederst i filen
 
-- **Gem filen**-knap: pilikon i accentfarven + teksten **Gem filen** (fed), pilleform med 2 px ramme, fyldes ved hover, 3 px fokus-outline. Under knappen en kort kursiveret linje om hvad filen er. Knappen gemmer en ren kopi: mørk tilstand, skriftstørrelse og op-pil nulstilles før gem.
+- **Gem filen**-knap: pilikon i accentfarven + teksten **Gem filen** (fed), pilleform (`border-radius:999px`) med 2 px ramme, mindst 48 px høj, fyldes ved hover, 3 px fokus-outline. Under knappen en kort kursiveret linje om hvad filen er, fx "Et billedalbum. Gemmer hele albummet som én fil på din egen computer." Knappen gemmer en ren kopi: mørk tilstand, skriftstørrelse og op-pil nulstilles før gem.
 - **Om denne fil**-panelet (se afsnit 4).
 - Begge kan slås fra i builderen, fx når siden vises inde på et website. Dublin Core i `<head>` følger altid med.
 - Manuelt indsat tællerkode mellem `TÆLLER` og `TÆLLER SLUT` bevares uændret. Builderen skriver aldrig selv tællerkode.
@@ -329,7 +339,21 @@ Korte outputfiler (fx et enkelt billede) må udelade skriftstørrelse og op-pil.
 
 ### 5.6 Filnavn
 
-Slug af titlen: små bogstaver, accenter fjernet, alt andet end a-z0-9 bliver til bindestreg.
+Slug af titlen: små bogstaver, **æ→ae, ø→oe, å→aa**, derefter fjernes accenter (é→e, ü→u), og alt andet end a-z0-9 bliver til bindestreg. Samme funktion bruges til filnavn og til titelslug i dc.identifier, så de altid passer sammen.
+
+```js
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+```
+
+Eksempel: "Skomagerværkstedet på Algade" → `skomagervaerkstedet-paa-algade.html`.
+
+Filer, der er lavet før version 1.2, beholder deres filnavn og identifikator. Reglen gælder kun nye filer, og en gammel identifikator overskrives ikke, når filen indlæses igen.
 
 ---
 
@@ -350,7 +374,7 @@ Alle apps understøtter den samme lille delmængde.
 | `---` | vandret streg |
 | `` `kode` `` | kode med baggrund |
 
-Tekst escapes før oversættelsen. Sidens titel er `<h1>`, så et enkelt `#` giver også `<h2>`. Hjælpeteksten viser syntaksen med eksempler.
+Tekst escapes før oversættelsen. Derfor skal reglerne matche den escapede tekst: et citat genkendes som `&gt;` i starten af linjen, ikke som `>`. Sidens titel er `<h1>`, så et enkelt `#` giver også `<h2>`. Hjælpeteksten viser syntaksen med eksempler.
 
 ---
 
@@ -358,6 +382,8 @@ Tekst escapes før oversættelsen. Sidens titel er `<h1>`, så et enkelt `#` giv
 
 - Feltet står øverst og hedder **Indlæs eksisterende … (valgfri)**.
 - Filen parses med DOMParser, og `builder-source-data` læses. Mangler blokken, afvises filen med: "Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet."
+- Har filen et andet `format`, afvises den med: "Filen er lavet med et andet værktøj i serien og kan ikke indlæses her."
+- Er `builderVersion` lavere end byggerens egen, afvises filen med samme besked som ved manglende blok. Byggeren indeholder ikke kode til at omsætte gamle formater; filen laves om.
 - Billeder og lyd hentes tilbage fra data:-URL'erne.
 - Tællerkoden følger med over.
 - Udgiverværdier rettes til gældende streng (se 4.1).
@@ -371,7 +397,30 @@ Skaleres til maks. **1600 px** på den længste led og gemmes som JPEG, kvalitet
 
 Undtagelse: Enkeltbillede · Bygger gemmer i høj opløsning (3000-4000 px eller originalen) og bevarer Exif, fordi det er appens formål.
 
+Undtagelse: Præsentation · Bygger gemmer billederne i **2560 px** og kvalitet **0,85**, fordi de skal vises på storskærm eller projektor. Der kan højst være **25 billeder**, så filen holder sig omkring 15-25 MB. Hvert billede får desuden en lille udgave (480 px, 0,78), som bruges i oversigten, i forhåndsvisningen og som `<link rel="icon">`. Den store udgave ligger i `data-full` på billedet og hentes først, når billedet vises.
+
 Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
+
+Billederne behandles ét ad gangen, så computeren ikke går i stå, når man vælger mange store billeder på én gang. Rækkefølgen følger det valgte.
+
+### 8.1 Oplysninger fra sidecar-filer
+
+Byggere, der tager imod billeder, kan læse oplysninger fra de små filer, som andre systemer lægger ved siden af billederne. Man markerer billeder og sidecar-filer på én gang i samme filvælger.
+
+| Kilde | Filtype | Hentes | Til |
+|---|---|---|---|
+| Google Takeout, pr. billede | `.json` (også `.supplemental-metadata.json`) | `description`, `photoTakenTime` | billedets beskrivelse, optagelsesdato |
+| Google Takeout, albummet | `metadata.json` | `title`, første `narrativeEnrichment.text` | albummets titel og beskrivelse |
+| Fotosafari | `.txt`, linjer: fotograf, beskrivelse, bredde, længde, gruppe, kode | fotograf, beskrivelse | dc.creator (flere adskilt af semikolon), billedets beskrivelse |
+
+Regler:
+
+- Sidecar og billede kobles på filnavnet uden endelse, uden forskel på store og små bogstaver.
+- Et felt udfyldes kun, hvis det er tomt. Det, man selv har skrevet, overskrives aldrig.
+- Et usynligt BOM-tegn forrest i en tekstfil fjernes.
+- Koordinater, gruppe og kode fra Fotosafari bruges ikke og kommer ikke med i outputfilen.
+- Er der optagelsesdatoer, vises knappen **Sortér efter optagelsesdato**, og datoen gemmes i kildedata, så sorteringen også virker efter genindlæsning.
+- Beskedboksen fortæller, hvor mange billeder der fik oplysninger, eller at ingen filer passede.
 
 ---
 
@@ -381,6 +430,7 @@ Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 - Synligt fokus: 2 px outline i builderen, 3 px på gem-knappen.
 - Klikflader mindst 44 × 44 px.
 - Ingen information formidlet med farve alene.
+- Hvert billede har et felt til alt-tekst. Er det tomt, bruges billedets titel.
 - Layoutet virker ned til mobilbredde.
 - Sproget er dansk, i hele sætninger, uden fagudtryk. En knap siger hvad der sker.
 
@@ -394,8 +444,10 @@ Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 - [ ] Feltrækkefølgen fra afsnit 2
 - [ ] Skriftstørrelser og kontrast fra afsnit 3
 - [ ] De fem temaer med `THEMES` kopieret uændret fra afsnit 3
-- [ ] Indlæsning af egne filer med pæn afvisning af fremmede filer
-- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede)
+- [ ] Indlæsning af egne filer med pæn afvisning af fremmede filer, andre formater og ældre builderVersion
+- [ ] Billeder 1600 px / 0,82 (undtagen Enkeltbillede og Præsentation)
+- [ ] Alt-tekstfelt pr. billede
+- [ ] Sidecar-filer læses efter 8.1 (hvor appen tager imod billeder)
 
 **Dublin Core**
 - [ ] Alle 15 felter, i rækkefølge, med samme labels
@@ -418,8 +470,9 @@ Bemærk: canvas-komprimering fanger kun første billede i en animeret GIF.
 - [ ] Skriftstørrelse og op-pil (på lange sider)
 - [ ] Tællerkode bevares ved genindlæsning
 - [ ] og:-tags og felt til delingsbillede
-- [ ] Markdown-delmængden fra afsnit 6
-- [ ] Filnavn som slug af titlen
+- [ ] Markdown-delmængden fra afsnit 6, også citat
+- [ ] Filnavn som slug af titlen med æ→ae, ø→oe, å→aa (5.6)
+- [ ] "Gem filen" i pilleform med kursiv linje under
 
 ---
 
@@ -431,11 +484,15 @@ Når flere foreninger og enkeltpersoner leverer materiale, skal metadata udfylde
 
 ### 11.2 Arbejdsgang
 
-1. Bidragyderen udfylder INDLEDNING øverst i sin tekst.
-2. Teksten indsættes i AI'en, som svarer med de 15 felter.
-3. Felter markeret [?] kontrolleres.
+Arbejdsgangen foregår i **Metadata-hjælper**, som laver INDLEDNINGEN ud fra en formular og kontrollerer AI'ens svar. Den kan også gøres i hånden.
+
+1. Bidragyderen udfylder INDLEDNING (i Metadata-hjælperens formular eller øverst i sin tekst).
+2. Prompten med INDLEDNING og tekst indsættes i AI'en, som svarer med de 15 felter.
+3. Svaret kontrolleres. Metadata-hjælper retter kendte stavemåder af udgiveren og markerer felter med [?], forkert dato, forkert type, udfyldt identifikator, udgiver der ikke står som første emneord, navne der ikke findes i teksten, og felter der afviger fra INDLEDNINGEN. Felterne kan ikke kopieres videre, før fejl og [?] er rettet.
 4. Identifikatoren overlades til byggeren, der foreslår den automatisk.
 5. Felterne kopieres ind i byggeren.
+
+Metadata-hjælper kan læse svaret, uanset om AI'en skriver ét felt pr. linje, alle felter i ét afsnit, en tabel eller med fed skrift. Afprøvet med Claude, Gemini og Copilot 365.
 
 ### 11.3 Indledning (udfyldes af bidragyder)
 
@@ -447,10 +504,15 @@ Dato for materialet:
 Udgiver:
 Rettigheder:
 Kilde (hvor stammer materialet fra):
+Arbejdstitel:
+Type:
+Sted og periode:
 
 TEKST
 ...
 ```
+
+De tre sidste linjer er valgfrie. Type skrives som dc.type-værdien (fx Sound). I Metadata-hjælper udfyldes den ud fra den valgte bygger.
 
 ### 11.4 Prompt
 
@@ -502,11 +564,37 @@ Rettigheder (dc.rights):
 
 ### 11.5 Vedligeholdelse
 
-Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en ny udgiver, rettes begge steder.
+Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en ny udgiver, rettes den tre steder: i `PUBLISHERS` i byggerne, i prompten her og i Metadata-hjælper (som bygger prompten ud fra sin egen kopi af `PUBLISHERS`).
+
+Ændres prompten her, rettes `PROMPT` i Metadata-hjælper tilsvarende.
 
 ---
 
 ## 12. Ændringslog
+
+**Version 1.4 — oktober 2026.**
+- Ny bygger: Præsentation · Bygger (v1.0), der afløser den PHP-baserede Billedpresent. Laver et billedshow til foredrag, som kan vises uden internet.
+- Afsnit 8: undtagelse for Præsentation · Bygger med 2560 px / 0,85, højst 25 billeder og en lille udgave til oversigten.
+- Afsnit 4.1: typeordet `praesentation` til dc.identifier, fx `SFB-praesentation-de-glemte-butikker-2026`.
+
+**Version 1.3 — oktober 2026.**
+- Videokort · Bygger er afløst af Mediekort · Bygger, som laver kort til både video (MovingImage) og podcast (Sound).
+- Nyt værktøj: Metadata-hjælper (v1.1), der laver INDLEDNING og prompt efter afsnit 11 og kontrollerer AI'ens svar. Afviger bevidst fra standarden, fordi den ikke laver en fil.
+- INDLEDNING i 11.3 udvidet med Arbejdstitel, Type og Sted og periode. Prompten i 11.4 er uændret.
+- 11.2 beskriver arbejdsgangen med Metadata-hjælper.
+- 11.5: udgiverlisten rettes nu også i Metadata-hjælper.
+
+**Version 1.2 — september 2026.**
+- Slug: æ→ae, ø→oe, å→aa, før accenterne fjernes. Gælder filnavn og titelslug i dc.identifier. Gamle filer beholder deres navn.
+- "Gem filen": pilleform (999px) og kursiv linje under knappen er nu fastlagt. Rettet i Sidebygger 1.4.
+- Temavælgeren viser "Lokalhistorisk", som i referencen. `THEMES` er uændret.
+- Markdown: reglerne skal matche den escapede tekst. Citat-fejlen i Sidebyggeren er rettet i 1.4.
+- Indlæsning: filer med andet format eller lavere builderVersion afvises.
+- Forhåndsvisning: kort forsinkelse og loft over billeder er tilladt i billedtunge apps.
+- Nyt afsnit 8.1 om sidecar-filer fra Google Takeout og Fotosafari.
+- Alt-tekstfelt pr. billede (afsnit 9).
+- Album · Bygger v3.0 er bragt i overensstemmelse med standarden.
+- Sidebygger v1.4 følger 1.2 og er fortsat referenceimplementering. Den har desuden fået felt til delingsbillede og `<link rel="icon">`, som manglede efter 5.2.
 
 **Version 1.1 — september 2026.**
 - Ny referenceimplementering: Sidebygger (`sidebygger-hs.html`, v1.3) i stedet for Lydfortælling · Bygger.
@@ -532,4 +620,5 @@ Udgiverlisten i prompten skal altid svare til `PUBLISHERS` i 4.1. Kommer der en 
 
 **Afklares, når byggeren tages op:**
 - dc.type for Henvisning, Vejledning og PWA.
-- Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem).
+- Kort typeord i dc.identifier for Mediekort · Bygger: "video" for video, og hvilket ord for podcast (fx "podcast" eller "lyd").
+- Hvilke af byggerne der skal have skriftstørrelse og op-pil (korte outputfiler kan undvære dem). Afgjort: Sidebygger, Album · Bygger og Præsentation · Bygger har begge dele.

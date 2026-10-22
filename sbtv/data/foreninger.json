@@ -1,0 +1,51 @@
+{
+    "portal": {
+        "titel": "Lokalhistorisk Søgeportal",
+        "undertitel": "Roskilde og omegn",
+        "kontakt_navn": "",
+        "kontakt_email": "",
+        "startpakke": ""
+    },
+    "foreninger": [
+        {
+            "noegle": "sfb",
+            "navn": "Syd for Banen",
+            "udgiver": "Syd for Banen - Lokalhistorisk Forening",
+            "slags": "Lokalhistorisk forening",
+            "forkortelse": "SfB",
+            "beskrivelse": "Billedgalleri, podcasts, byvandringer og temaer om Roskildes udvikling.",
+            "hjemmeside": "https://sfbbilleder.eu/port",
+            "logo": "grafik/sfb.jpeg"
+        },
+        {
+            "noegle": "rtv",
+            "navn": "Roskilde TV",
+            "udgiver": "Roskilde TV",
+            "slags": "Lokal-tv",
+            "forkortelse": "RTV",
+            "beskrivelse": "Ikke-kommerciel lokalstation. Udsendelser om livet i Roskilde, gemt på YouTube.",
+            "hjemmeside": "https://roskildetv.dk/",
+            "logo": "grafik/rtv.png"
+        },
+        {
+            "noegle": "hsra",
+            "navn": "Historisk Samfund for Roskilde Amt",
+            "udgiver": "Historisk Samfund for Roskilde Amt",
+            "slags": "Historisk forening siden 1912",
+            "forkortelse": "HS",
+            "beskrivelse": "Årbøger, artikler og kortet over Kilderne i Roskilde.",
+            "hjemmeside": "https://historisksamfundforroskildeamt.dk/",
+            "logo": "grafik/hsr.png"
+        },
+        {
+            "noegle": "rkr",
+            "navn": "Røde Kors Roskilde",
+            "udgiver": "Røde Kors Roskilde",
+            "slags": "Frivillig organisation",
+            "forkortelse": "RK",
+            "beskrivelse": "Lydfortællinger og billeder fra frivilligt arbejde og fællesskaber i Roskilde.",
+            "hjemmeside": "https://rkroskilde.dk",
+            "logo": "grafik/rk.png"
+        }
+    ]
+}

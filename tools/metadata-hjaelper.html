@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metadata-hjælper</title>
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field > label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; }
+  .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  input[type=text], textarea, select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  textarea.big{ min-height:260px; }
+  input[type=text]:focus, textarea:focus, select:focus, button:focus-visible{ outline:2px solid var(--rust); outline-offset:1px; }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+  .sectionhead:first-child{ margin-top:0; }
+  .intro{ font-size:15px; line-height:1.6; margin:0 0 24px; }
+  .counter{ font-size:13.5px; color:var(--moss); font-weight:600; margin-top:6px; }
+  .counter.warn{ color:#7A6522; }
+
+  .generate-btn{
+    width:100%; min-height:48px; padding:15px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px; font-family:var(--sans);
+  }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4538; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .meta-btn{
+    width:100%; min-height:44px; padding:12px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px; font-family:var(--sans);
+  }
+  .meta-btn:hover{ background:#f2ecdd; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+  .msg.warn{ display:block; background:#f7efd9; color:#5e4d15; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  @media (max-width: 900px){ .preview-pane{ position:static; min-height:0; border-left:none; border-top:1px solid var(--line); } }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:10px; font-weight:600; }
+  .preview-pane p{ font-size:14px; line-height:1.55; margin:0 0 14px; }
+  .promptbox{
+    background:#fbf8ef; border:1px solid var(--line); border-radius:8px; padding:14px;
+    font-size:13.5px; line-height:1.5; white-space:pre-wrap; word-wrap:break-word;
+    max-height:52vh; overflow:auto; margin:0;
+  }
+  .promptbox .filled{ background:#efe3c2; border-radius:2px; }
+
+  /* Trin 3: resultater */
+  .res{ border:1px solid var(--line); border-radius:5px; background:#f7f3e7; padding:12px 14px 12px; margin-bottom:12px; }
+  .res.is-err{ border-left:5px solid #a3361f; }
+  .res.is-chk{ border-left:5px solid #a3841f; }
+  .res.is-ok{ border-left:5px solid #5d6e4c; }
+  .res-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:7px; }
+  .res-head label{ font-size:14px; font-weight:600; color:var(--moss); }
+  .res-head label small{ font-weight:400; color:var(--hint); font-size:13px; margin-left:6px; }
+  .pill{ font-size:13px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .pill.ok{ background:#e1e8d6; color:#33402a; }
+  .pill.chk{ background:#f3e6bf; color:#5e4d15; }
+  .pill.err{ background:#f4ded9; color:#7d2c1a; }
+  .res textarea{ min-height:84px; }
+  .notes{ list-style:none; margin:8px 0 0; padding:0; }
+  .notes li{ font-size:13.5px; line-height:1.5; margin-top:5px; color:var(--ink); }
+  .notes li b{ font-weight:700; }
+  .fix-btn{
+    margin-left:6px; min-height:32px; padding:4px 10px; font-size:13.5px; font-weight:600;
+    border:1px solid var(--rust); color:var(--rust); background:#fff; border-radius:4px; cursor:pointer; font-family:var(--sans);
+  }
+  .fix-btn:hover{ background:#f6e9e2; }
+  .summary{ font-size:14.5px; line-height:1.55; padding:11px 14px; border-radius:4px; margin:16px 0 14px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Metadata-hjælper</h1>
+  <span>Lav en AI-prompt til Dublin Core og kontrollér svaret · kører lokalt, ingen server · version 1.2</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <p class="intro">Udfyld det, du ved, og sæt teksten ind. Kopiér prompten til højre over i den AI, du bruger. Sæt AI'ens svar ind nederst, så tjekker værktøjet felterne, før de kommer i byggeren.</p>
+
+    <div class="sectionhead">Trin 1: Fortæl om materialet</div>
+
+    <div class="field">
+      <label for="builder">Hvilken bygger skal materialet i?</label>
+      <select id="builder">
+        <option value="">(ved ikke, lad AI'en foreslå typen)</option>
+        <option value="Text">Sidebygger (artikelside)</option>
+        <option value="Sound">Lydfortælling · Bygger</option>
+        <option value="Image">Album · Bygger</option>
+        <option value="Text">Bogbygger</option>
+        <option value="Image">Enkeltbillede · Bygger</option>
+        <option value="Image">Før og Nu · Bygger</option>
+        <option value="MovingImage">Mediekort · Bygger (video)</option>
+        <option value="Sound">Mediekort · Bygger (podcast)</option>
+      </select>
+      <div class="hint">Bestemmer typen i <code>dc.type</code>. Valgt type: <b id="typeShow">ikke valgt</b>.</div>
+    </div>
+
+    <div class="field">
+      <label for="workTitle">Arbejdstitel (valgfri)</label>
+      <input type="text" id="workTitle" placeholder="fx Branden i Algade">
+      <div class="hint">Har materialet allerede en titel, så skriv den. Ellers foreslår AI'en en.</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="publisher">Udgiver / område</label>
+        <select id="publisher"><option value="">(ikke valgt)</option></select>
+      </div>
+      <div class="field">
+        <label for="creator">Ophav (navn)</label>
+        <input type="text" id="creator" placeholder="Den der fortæller, skriver eller fotograferer">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="rights">Rettigheder</label>
+      <input type="text" id="rights" placeholder="Udfyldes, når du vælger udgiver">
+      <div class="hint">Udfyldes med den typiske tekst for udgiveren. Du kan rette den.</div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="contributors">Øvrige bidragydere</label>
+        <input type="text" id="contributors" placeholder="fx interviewer, fotograf">
+        <div class="hint">Flere navne adskilles med semikolon.</div>
+      </div>
+      <div class="field">
+        <label for="date">Dato for materialet</label>
+        <input type="text" id="date" placeholder="fx 1968-05-14 eller ca. 1955">
+        <div class="hint">Hvornår det skete, eller hvornår det blev optaget.</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="place">Sted og periode</label>
+        <input type="text" id="place" placeholder="fx Roskilde; 1960'erne">
+      </div>
+      <div class="field">
+        <label for="source">Kilde</label>
+        <input type="text" id="source" placeholder="fx interview, privat fotoalbum">
+        <div class="hint">Hvor materialet stammer fra.</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="rawText">Teksten</label>
+      <textarea id="rawText" class="big" placeholder="Sæt transskriptionen, artiklen eller dine noter ind her."></textarea>
+      <div class="counter" id="wordCount">0 ord</div>
+      <div class="hint">Teksten sendes til den AI-tjeneste, du sætter prompten ind i. Er det et interview med en privatperson, så sørg for, at personen har sagt ja til, at materialet bruges. Fjern oplysninger, der ikke hører til i arkivet, fx om helbred eller økonomi.</div>
+    </div>
+
+    <button type="button" class="meta-btn" id="clearBtn">Ryd formularen og start forfra</button>
+
+    <div class="sectionhead">Trin 3: Kontrollér AI'ens svar</div>
+
+    <div class="field">
+      <label for="aiAnswer">Sæt AI'ens svar ind</label>
+      <textarea id="aiAnswer" placeholder="Titel (dc.title): …&#10;Ophav / skaber (dc.creator): …"></textarea>
+      <div class="hint">Kopiér hele svaret fra AI'en og sæt det ind her. Værktøjet finder de 15 felter, retter det, der kan rettes, og viser, hvad du selv skal se efter.</div>
+    </div>
+    <button type="button" class="generate-btn" id="checkBtn">Kontrollér svaret</button>
+    <div class="msg" id="checkMsg"></div>
+
+    <div id="results"></div>
+
+    <div id="exportArea" style="display:none">
+      <button type="button" class="generate-btn" id="copyFieldsBtn">Kopiér de godkendte felter</button>
+      <button type="button" class="meta-btn" id="jsonBtn">Gem metadata som separat JSON-fil</button>
+      <div class="msg" id="exportMsg"></div>
+      <div class="hint">Felterne sættes ind i Dublin Core-panelet i byggeren. Identifikatoren laver byggeren selv.</div>
+    </div>
+
+  </div>
+
+  <aside class="preview-pane">
+    <div class="label">Trin 2: Kopiér prompten</div>
+    <p>Sæt prompten ind i Claude, Gemini, ChatGPT eller den AI, du har adgang til. Det du har skrevet i trin 1, er fremhævet.</p>
+    <button type="button" class="generate-btn" id="copyPromptBtn" disabled>Kopiér prompten</button>
+    <button type="button" class="meta-btn" id="savePromptBtn" disabled>Gem prompten som tekstfil</button>
+    <div class="msg" id="promptMsg"></div>
+    <pre class="promptbox" id="promptBox" style="margin-top:16px"></pre>
+  </aside>
+</div>
+
+<script>
+/* ---------- Fælles konstanter (Builder-standard 1.2) ---------- */
+
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+// Typiske rettigheder pr. udgiver (afsnit 4.1). Udgivere uden fast tekst står tomme.
+const TYPICAL_RIGHTS = {
+  'Privat':'Privat materiale. Må ikke videregives.',
+  'Syd for Banen - Lokalhistorisk Forening':'© Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse.',
+  'Røde Kors':'© Røde Kors. Må anvendes i foreningens formidling.'
+};
+
+const DC_TYPES = ['Text','Image','Sound','MovingImage','InteractiveResource','Collection','Event'];
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav / skaber', subject:'Emne / nøgleord', description:'Beskrivelse',
+  publisher:'Udgiver / område', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+// Prompten fra afsnit 11.4, uændret.
+const PROMPT = `Du udfylder Dublin Core-metadata ud fra en tekst med en INDLEDNING.
+Svar KUN med de 15 felter nedenfor, i denne rækkefølge, én linje
+pr. felt. Ingen indledning, ingen kommentarer, ingen forklaringer.
+
+REGLER
+- Brug oplysninger fra INDLEDNING præcis som de står.
+- Gæt aldrig på navne, datoer eller rettigheder. Mangler de,
+  lad feltet stå tomt.
+- Er du i tvivl om et forslag, skriv [?] efter det.
+- Dato: helst ÅÅÅÅ-MM-DD. ÅÅÅÅ-MM, ÅÅÅÅ eller "ca. ÅÅÅÅ" er også i orden.
+- Udgiver: KUN én af disse, stavet præcis sådan:
+${PUBLISHERS.map(p => '  ' + p.name).join('\n')}
+  Passer ingen, lad feltet stå tomt.
+- Emne: udgiveren som første emneord, derefter 3-6 emneord
+  adskilt af semikolon.
+- Beskrivelse: 2-4 saglige sætninger uden vurderinger.
+- Type: Text, Image, Sound, MovingImage, InteractiveResource,
+  Collection eller Event.
+- Format: text/html.
+- Identifikator: lad altid stå tom.
+- Sprog: da, medmindre teksten er på et andet sprog.
+- Dækning: sted og/eller periode som teksten handler om.
+
+FELTER
+${DC_FIELDS.map(k => DC_LABELS[k] + ' (dc.' + k + '):').join('\n')}`;
+
+/* ---------- Hjælpefunktioner ---------- */
+
+const $ = id => document.getElementById(id);
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+function downloadBlob(content, type, filename){
+  const blob = new Blob([content], {type:type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Kopiering virker også, når filen er åbnet direkte fra disken i en ældre browser.
+function copyText(text){
+  if (navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  }
+  return fallbackCopy(text);
+}
+function fallbackCopy(text){
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly','');
+    ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+    ok ? resolve() : reject();
+  });
+}
+
+function showMsg(id, text, kind){
+  const m = $(id); m.textContent = text; m.className = 'msg ' + kind;
+}
+
+/* ---------- Trin 1 ---------- */
+
+(function fillPublishers(){
+  const sel = $('publisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option'); o.value = p.name; o.textContent = p.name; sel.appendChild(o);
+  });
+})();
+
+let rightsTouched = false;
+$('rights').addEventListener('input', () => { rightsTouched = $('rights').value.trim() !== ''; });
+$('publisher').addEventListener('change', () => {
+  if (!rightsTouched) $('rights').value = TYPICAL_RIGHTS[$('publisher').value] || '';
+  update();
+});
+
+function readIntro(){
+  return {
+    creator: $('creator').value.trim(),
+    contributors: $('contributors').value.trim(),
+    date: $('date').value.trim(),
+    publisher: $('publisher').value,
+    rights: $('rights').value.trim(),
+    source: $('source').value.trim(),
+    title: $('workTitle').value.trim(),
+    type: $('builder').value,
+    place: $('place').value.trim(),
+    text: $('rawText').value.trim()
+  };
+}
+
+// INDLEDNING efter afsnit 11.3, udvidet med arbejdstitel, type og sted.
+function introLines(f){
+  return [
+    ['Navn (ophav)', f.creator],
+    ['Øvrige bidragydere', f.contributors],
+    ['Dato for materialet', f.date],
+    ['Udgiver', f.publisher],
+    ['Rettigheder', f.rights],
+    ['Kilde (hvor stammer materialet fra)', f.source],
+    ['Arbejdstitel', f.title],
+    ['Type', f.type],
+    ['Sted og periode', f.place]
+  ];
+}
+
+function buildPrompt(f){
+  return PROMPT + '\n\nINDLEDNING\n' +
+    introLines(f).map(([k,v]) => k + ':' + (v ? ' ' + v : '')).join('\n') +
+    '\n\nTEKST\n' + f.text;
+}
+
+function update(){
+  const f = readIntro();
+  $('typeShow').textContent = f.type || 'ikke valgt';
+
+  const words = f.text ? f.text.split(/\s+/).length : 0;
+  const wc = $('wordCount');
+  wc.textContent = words.toLocaleString('da-DK') + ' ord';
+  wc.className = 'counter';
+  if (words > 15000){
+    wc.textContent += '. Meget lang tekst: nogle gratis AI-tjenester kan ikke tage så meget på én gang. Del den eventuelt op.';
+    wc.className = 'counter warn';
+  }
+
+  // Forhåndsvisning med det udfyldte fremhævet
+  const intro = introLines(f).map(([k,v]) =>
+    esc(k) + ':' + (v ? ' <span class="filled">' + esc(v) + '</span>' : '')).join('\n');
+  const textPart = f.text
+    ? '<span class="filled">' + esc(f.text.length > 1200 ? f.text.slice(0,1200) + ' …' : f.text) + '</span>'
+    : '(teksten fra trin 1 kommer her)';
+  $('promptBox').innerHTML = esc(PROMPT) + '\n\nINDLEDNING\n' + intro + '\n\nTEKST\n' + textPart;
+
+  $('copyPromptBtn').disabled = !f.text;
+  $('savePromptBtn').disabled = !f.text;
+  if (!f.text) showMsg('promptMsg', 'Sæt teksten ind i trin 1, så kan prompten kopieres.', 'warn');
+  else $('promptMsg').className = 'msg';
+}
+
+['builder','workTitle','creator','rights','contributors','date','place','source','rawText']
+  .forEach(id => $(id).addEventListener('input', update));
+$('builder').addEventListener('change', update);
+
+$('copyPromptBtn').addEventListener('click', () => {
+  const f = readIntro();
+  copyText(buildPrompt(f))
+    .then(() => showMsg('promptMsg', 'Prompten er kopieret. Sæt den ind i din AI-chat, og kom tilbage med svaret til trin 3.', 'ok'))
+    .catch(() => showMsg('promptMsg', 'Prompten kunne ikke kopieres. Brug knappen "Gem prompten som tekstfil" i stedet.', 'err'));
+});
+
+$('savePromptBtn').addEventListener('click', () => {
+  const f = readIntro();
+  downloadBlob(buildPrompt(f), 'text/plain;charset=utf-8', slugify(f.title, 'metadata') + '-prompt.txt');
+  showMsg('promptMsg', 'Prompten er gemt som tekstfil. Åbn den, markér alt og kopiér.', 'ok');
+});
+
+$('clearBtn').addEventListener('click', () => {
+  if (!confirm('Vil du rydde hele formularen, også AI-svaret?')) return;
+  ['workTitle','creator','rights','contributors','date','place','source','rawText','aiAnswer']
+    .forEach(id => $(id).value = '');
+  $('builder').value = ''; $('publisher').value = '';
+  rightsTouched = false;
+  $('results').innerHTML = ''; $('exportArea').style.display = 'none';
+  $('checkMsg').className = 'msg';
+  update();
+});
+
+/* ---------- Trin 3: læs og kontrollér svaret ---------- */
+
+let dcValues = null;   // de 15 felter, som de står lige nu
+let foundKeys = [];
+
+// Læser svaret, uanset om AI'en har sat ét felt pr. linje, skrevet alt i ét
+// afsnit (Copilot gør det somme tider) eller brugt tabel og fed skrift.
+function parseAnswer(text){
+  const clean = text.replace(/\*\*/g,'').replace(/\|/g,' ');
+  const re = /\(?\s*dc\.([a-z]+)\s*\)?\s*:?/gi;
+  const hits = [];
+  let m;
+  while ((m = re.exec(clean)) !== null){
+    const key = m[1].toLowerCase();
+    if (DC_FIELDS.indexOf(key) !== -1) hits.push({key, start:m.index, end:re.lastIndex});
+  }
+  const out = {};
+  hits.forEach((h, i) => {
+    if (h.key in out) return;
+    let v = clean.slice(h.end, i + 1 < hits.length ? hits[i+1].start : clean.length);
+    if (i + 1 < hits.length){
+      // Fjern næste felts label, som står lige før "(dc.…)".
+      if (v.indexOf('\n') !== -1) v = v.slice(0, v.lastIndexOf('\n'));
+      else {
+        const lab = DC_LABELS[hits[i+1].key].toLowerCase();
+        const tail = v.replace(/\s+$/, '');
+        if (tail.toLowerCase().endsWith(lab)) v = tail.slice(0, tail.length - lab.length);
+      }
+    }
+    out[h.key] = v.replace(/^[\s\-*•]+|[\s\-*•]+$/g,'').replace(/^["']|["']$/g,'').trim();
+  });
+  return out;
+}
+
+const DATE_OK = /^(\d{4})(-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?)?$|^ca\.\s?\d{4}$/i;
+const same = (a,b) => (a||'').trim().toLowerCase() === (b||'').trim().toLowerCase();
+
+// Navne i ophav og bidragydere, som ikke står i teksten eller i trin 1.
+// Fanger stavefejl som "HejRik" for "Henrik".
+function unknownNames(v, f, introVal){
+  if (!f.text) return [];
+  const hay = (f.text + ' ' + (introVal || '')).toLowerCase();
+  return v.replace(/\s*\[\?\]\s*/g,'').split(';').map(x => x.trim()).filter(Boolean)
+    .filter(name => hay.indexOf(name.toLowerCase()) === -1);
+}
+
+// Returnerer en liste af {lvl:'err'|'chk'|'info', text, fix?}
+function validate(key, v, f){
+  const n = [];
+  if (/\[\?\]/.test(v)) n.push({lvl:'chk', text:'AI\'en er i tvivl. Kontrollér feltet og fjern [?], når det er i orden.'});
+  if (foundKeys.indexOf(key) === -1) n.push({lvl:'chk', text:'Feltet manglede i AI\'ens svar.'});
+
+  switch(key){
+    case 'title':
+      if (!v) n.push({lvl:'chk', text:'Der er ingen titel.'});
+      break;
+    case 'creator':
+      unknownNames(v, f, f.creator).forEach(x =>
+        n.push({lvl:'chk', text:'Navnet "' + x + '" står ikke i teksten. Kontrollér stavningen.'}));
+      if (f.creator && !same(v, f.creator))
+        n.push({lvl:'chk', text:'Afviger fra det, du skrev i trin 1: "' + f.creator + '".', fix:f.creator});
+      break;
+    case 'subject': {
+      const parts = v.split(';').map(s => s.trim()).filter(Boolean);
+      const pub = dcValues.publisher;
+      if (pub && parts[0] !== pub){
+        const rest = parts.filter(p => normalizePublisher(p) !== pub);
+        n.push({lvl:'err', text:'Udgiveren skal stå som første emneord.', fix:[pub].concat(rest).join('; ')});
+      }
+      const count = pub ? parts.length - 1 : parts.length;
+      if (count > 6) n.push({lvl:'chk', text:'Mange emneord (' + count + '). 3-6 er nok.'});
+      if (/,/.test(v) && !/;/.test(v.replace(pub||'','')))
+        n.push({lvl:'chk', text:'Emneordene ser ud til at være adskilt med komma. Brug semikolon.'});
+      break;
+    }
+    case 'description': {
+      const sentences = v.split(/[.!?](\s|$)/).filter(s => s && s.trim().length > 2).length;
+      if (!v) n.push({lvl:'chk', text:'Der er ingen beskrivelse.'});
+      else if (sentences > 5) n.push({lvl:'chk', text:'Beskrivelsen er lang. 2-4 sætninger er nok.'});
+      break;
+    }
+    case 'publisher':
+      if (!v) n.push({lvl:'chk', text:'Ingen udgiver valgt. Filen havner under "Uden område" i søgesiden.'});
+      else if (!PUBLISHERS.some(p => p.name === v)) n.push({lvl:'err', text:'Udgiveren er ikke på listen. Vælg en af de fem.'});
+      if (f.publisher && v !== f.publisher)
+        n.push({lvl:'chk', text:'Afviger fra det, du valgte i trin 1: "' + f.publisher + '".', fix:f.publisher});
+      break;
+    case 'contributor':
+      unknownNames(v, f, f.contributors).forEach(x =>
+        n.push({lvl:'chk', text:'Navnet "' + x + '" står ikke i teksten. Kontrollér stavningen.'}));
+      if (f.contributors && !same(v, f.contributors))
+        n.push({lvl:'chk', text:'Afviger fra det, du skrev i trin 1: "' + f.contributors + '".', fix:f.contributors});
+      break;
+    case 'date': {
+      const clean = v.replace(/\s*\[\?\]\s*/g,'');
+      if (clean && !DATE_OK.test(clean))
+        n.push({lvl:'err', text:'Datoen skal skrives som ÅÅÅÅ-MM-DD, ÅÅÅÅ-MM, ÅÅÅÅ eller "ca. ÅÅÅÅ".'});
+      if (f.date && !same(clean, f.date))
+        n.push({lvl:'chk', text:'Afviger fra det, du skrev i trin 1: "' + f.date + '".', fix:f.date});
+      break;
+    }
+    case 'type':
+      if (!v) n.push({lvl:'chk', text:'Ingen type valgt.'});
+      else if (DC_TYPES.indexOf(v) === -1) n.push({lvl:'err', text:'Ukendt type. Vælg en fra listen.'});
+      if (f.type && v !== f.type)
+        n.push({lvl:'chk', text:'Passer ikke til den bygger, du valgte i trin 1 (' + f.type + ').', fix:f.type});
+      break;
+    case 'format':
+      if (v !== 'text/html') n.push({lvl:'err', text:'Formatet skal være text/html.', fix:'text/html'});
+      break;
+    case 'identifier':
+      if (v) n.push({lvl:'err', text:'Lad feltet stå tomt. Byggeren foreslår selv identifikatoren.', fix:''});
+      break;
+    case 'source':
+      if (f.source && !same(v, f.source))
+        n.push({lvl:'chk', text:'Afviger fra det, du skrev i trin 1: "' + f.source + '".', fix:f.source});
+      break;
+    case 'language':
+      if (!v) n.push({lvl:'chk', text:'Intet sprog. Normalt er det da.', fix:'da'});
+      else if (!/^[a-z]{2,3}$/.test(v)) n.push({lvl:'err', text:'Skriv sproget som kode, fx da.', fix:'da'});
+      break;
+    case 'coverage':
+      if (!v) n.push({lvl:'chk', text:'Der står ikke noget sted eller nogen periode.'});
+      break;
+    case 'rights':
+      if (!v) n.push({lvl:'chk', text:'Der står ingen rettigheder. Så ved andre ikke, hvad de må med filen.'});
+      if (f.rights && !same(v, f.rights))
+        n.push({lvl:'chk', text:'Afviger fra det, du skrev i trin 1.', fix:f.rights});
+      break;
+  }
+  return n;
+}
+
+function inputFor(key, v){
+  const id = 'res_' + key;
+  if (key === 'publisher'){
+    let opts = '<option value="">(ikke valgt)</option>' +
+      PUBLISHERS.map(p => '<option' + (p.name === v ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
+    if (v && !PUBLISHERS.some(p => p.name === v))
+      opts += '<option selected value="' + esc(v) + '">' + esc(v) + ' (ikke på listen, vælg en udgiver)</option>';
+    return '<select id="' + id + '" data-key="' + key + '">' + opts + '</select>';
+  }
+  if (key === 'type'){
+    let opts = '<option value="">(ikke valgt)</option>' +
+      DC_TYPES.map(t => '<option' + (t === v ? ' selected' : '') + '>' + t + '</option>').join('');
+    if (v && DC_TYPES.indexOf(v) === -1)
+      opts += '<option selected value="' + esc(v) + '">' + esc(v) + ' (ukendt)</option>';
+    return '<select id="' + id + '" data-key="' + key + '">' + opts + '</select>';
+  }
+  if (key === 'description')
+    return '<textarea id="' + id + '" data-key="' + key + '">' + esc(v) + '</textarea>';
+  return '<input type="text" id="' + id + '" data-key="' + key + '" value="' + esc(v) + '">';
+}
+
+function renderResults(){
+  const box = $('results');
+  box.innerHTML = '<div class="summary" id="summary"></div>' + DC_FIELDS.map(key =>
+    '<div class="res" id="row_' + key + '">' +
+      '<div class="res-head"><label for="res_' + key + '">' + DC_LABELS[key] + '<small>dc.' + key + '</small></label>' +
+      '<span class="pill" id="pill_' + key + '"></span></div>' +
+      inputFor(key, dcValues[key]) +
+      '<ul class="notes" id="notes_' + key + '"></ul>' +
+    '</div>').join('');
+  box.querySelectorAll('[data-key]').forEach(el => {
+    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, () => { dcValues[el.dataset.key] = el.value.trim(); refreshChecks(); });
+  });
+  $('exportArea').style.display = 'block';
+  refreshChecks();
+}
+
+function setField(key, value){
+  dcValues[key] = value;
+  const el = $('res_' + key);
+  if (el.tagName === 'SELECT' && !Array.from(el.options).some(o => o.value === value)){
+    const o = document.createElement('option'); o.value = value; o.textContent = value; el.appendChild(o);
+  }
+  el.value = value;
+  refreshChecks();
+}
+
+function refreshChecks(){
+  const f = readIntro();
+  let errs = 0, chks = 0;
+  DC_FIELDS.forEach(key => {
+    const notes = validate(key, dcValues[key] || '', f);
+    const hasErr = notes.some(x => x.lvl === 'err');
+    const hasChk = notes.some(x => x.lvl === 'chk');
+    if (hasErr) errs++; else if (hasChk) chks++;
+    $('row_' + key).className = 'res ' + (hasErr ? 'is-err' : hasChk ? 'is-chk' : 'is-ok');
+    const pill = $('pill_' + key);
+    pill.className = 'pill ' + (hasErr ? 'err' : hasChk ? 'chk' : 'ok');
+    pill.textContent = hasErr ? 'Skal rettes' : hasChk ? 'Se efter' : 'I orden';
+    const ul = $('notes_' + key);
+    ul.innerHTML = '';
+    notes.forEach(x => {
+      const li = document.createElement('li');
+      li.innerHTML = '<b>' + (x.lvl === 'err' ? 'Skal rettes:' : 'Se efter:') + '</b> ' + esc(x.text);
+      if ('fix' in x){
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'fix-btn';
+        b.textContent = x.fix === '' ? 'Tøm feltet' : 'Ret til: ' + (x.fix.length > 60 ? x.fix.slice(0,60) + '…' : x.fix);
+        b.addEventListener('click', () => setField(key, x.fix));
+        li.appendChild(b);
+      }
+      ul.appendChild(li);
+    });
+  });
+  const s = $('summary');
+  if (errs === 0 && chks === 0){
+    s.textContent = 'Alle 15 felter er i orden. Kopiér dem over i byggeren.';
+    s.style.background = '#e1e8d6'; s.style.color = '#33402a';
+  } else {
+    const parts = [];
+    if (errs) parts.push(errs + (errs === 1 ? ' felt skal rettes' : ' felter skal rettes'));
+    if (chks) parts.push(chks + (chks === 1 ? ' felt skal du se efter' : ' felter skal du se efter'));
+    s.textContent = parts.join(', og ') + '. Du kan rette direkte i felterne nedenfor.';
+    s.style.background = errs ? '#f4ded9' : '#f7efd9';
+    s.style.color = errs ? '#7d2c1a' : '#5e4d15';
+  }
+}
+
+$('checkBtn').addEventListener('click', () => {
+  const text = $('aiAnswer').value;
+  if (!text.trim()){
+    showMsg('checkMsg', 'Sæt AI\'ens svar ind i feltet ovenfor først.', 'err');
+    return;
+  }
+  const parsed = parseAnswer(text);
+  foundKeys = Object.keys(parsed);
+  if (foundKeys.length === 0){
+    showMsg('checkMsg', 'Der blev ikke fundet nogen felter i svaret. Hver linje skal indeholde fx "(dc.title):". Kopiér hele svaret fra AI\'en og prøv igen.', 'err');
+    $('results').innerHTML = ''; $('exportArea').style.display = 'none';
+    return;
+  }
+  dcValues = {};
+  const fixed = [];
+  DC_FIELDS.forEach(k => { dcValues[k] = parsed[k] || ''; });
+
+  // Kendte stavefejl i udgiveren rettes med det samme (afsnit 4.1).
+  if (dcValues.publisher){
+    const n = normalizePublisher(dcValues.publisher);
+    if (n !== dcValues.publisher && PUBLISHERS.some(p => p.name === n)){
+      fixed.push('udgiveren "' + dcValues.publisher + '" er rettet til "' + n + '"');
+      dcValues.subject = dcValues.subject.split(';').map(x => normalizePublisher(x.trim())).join('; ');
+      dcValues.publisher = n;
+    }
+  }
+  showMsg('checkMsg', 'Fandt ' + foundKeys.length + ' af 15 felter' +
+    (fixed.length ? ', og ' + fixed.join(', ') : '') + '.', foundKeys.length === 15 ? 'ok' : 'warn');
+  renderResults();
+  $('results').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+/* ---------- Udlevering ---------- */
+
+function blockers(){
+  const f = readIntro();
+  const errs = [], doubts = [];
+  DC_FIELDS.forEach(key => {
+    const v = dcValues[key] || '';
+    if (validate(key, v, f).some(x => x.lvl === 'err')) errs.push(DC_LABELS[key]);
+    if (/\[\?\]/.test(v)) doubts.push(DC_LABELS[key]);
+  });
+  return {errs, doubts};
+}
+
+function guard(){
+  const b = blockers();
+  if (b.errs.length){
+    showMsg('exportMsg', 'Ret først: ' + b.errs.join(', ') + '.', 'err'); return false;
+  }
+  if (b.doubts.length){
+    showMsg('exportMsg', 'Der står stadig [?] ved: ' + b.doubts.join(', ') + '. Kontrollér felterne og fjern markeringen.', 'err'); return false;
+  }
+  return true;
+}
+
+$('copyFieldsBtn').addEventListener('click', () => {
+  if (!dcValues || !guard()) return;
+  const text = DC_FIELDS.map(k => DC_LABELS[k] + ' (dc.' + k + '): ' + (dcValues[k] || '')).join('\n');
+  copyText(text)
+    .then(() => showMsg('exportMsg', 'De 15 felter er kopieret. Sæt dem over i Dublin Core-panelet i byggeren.', 'ok'))
+    .catch(() => showMsg('exportMsg', 'Felterne kunne ikke kopieres. Brug JSON-filen i stedet.', 'err'));
+});
+
+$('jsonBtn').addEventListener('click', () => {
+  if (!dcValues || !guard()) return;
+  const dc = {};
+  DC_FIELDS.forEach(k => { if (dcValues[k]) dc[k] = dcValues[k]; });
+  const payload = {'@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString()};
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json',
+    slugify(dcValues.title, 'metadata') + '-metadata.json');
+  showMsg('exportMsg', 'Metadatafilen er downloadet.', 'ok');
+});
+
+update();
+</script>
+</body>
+</html>

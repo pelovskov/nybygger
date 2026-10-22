@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piwigo Albumbygger</title>
+<!--
+  Piwigo Albumbygger · version 2.0 · følger Builder-standard 1.6
+  Bevidste afvigelser fra standarden:
+  - Hentningen fra Piwigo kræver, at filen ligger på galleriets egen webadresse
+    (fx https://sfbbilleder.eu/piwigo-albumbygger.html). Åbnet fra computeren kan
+    den kun redigere album, der allerede er lavet.
+  - Afsnit 8.1 (sidecar-filer) gælder ikke: titler og beskrivelser hentes direkte fra Piwigo.
+  - Ud over albumfilen kan originalerne gemmes som ZIP med album.json.
+-->
+<style>
+  :root{
+    --paper: #EDE7D8;
+    --paper-dim: #E2DBC8;
+    --ink: #211E19;
+    --rust: #9A4630;
+    --moss: #47543C;
+    --hint: #5F5A4B;
+    --line: #cbc2a8;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); min-height:100vh; }
+  .topbar{ padding:22px 28px 18px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  .topbar h1{ font-family:var(--serif); font-size:25px; margin:0; letter-spacing:0.2px; }
+  .topbar span{ font-size:14.5px; color:var(--hint); letter-spacing:0.3px; }
+  .layout{ display:grid; grid-template-columns: 1fr 420px; gap:0; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } .preview-pane{ position:static; min-height:0; } }
+  .form-pane{ padding:28px; max-width:660px; }
+  .field{ margin-bottom:20px; }
+  .field label{ display:block; font-size:13.5px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; margin-bottom:7px; }
+  .field .hint{ font-size:13.5px; line-height:1.55; color:var(--hint); margin-top:6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .check-row{ display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .check, .field label.check{ display:flex; margin-bottom:0; align-items:flex-start; gap:10px; cursor:pointer; font-weight:400; text-transform:none; letter-spacing:0; font-size:14.5px; line-height:1.45; color:var(--ink); }
+  .check input{ width:18px; height:18px; margin:1px 0 0; flex:0 0 18px; accent-color:var(--rust); cursor:pointer; }
+  .check span strong{ font-weight:650; }
+  .field .hint code{ background:#e5dfcd; padding:1px 5px; border-radius:3px; font-size:13px; }
+  input[type=text], textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  textarea{ min-height:150px; resize:vertical; line-height:1.6; }
+  textarea.small{ min-height:96px; }
+  input[type=text]:focus, textarea:focus, select:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  button:focus-visible, summary:focus-visible, input[type=file]:focus-visible{ outline:2px solid var(--rust); outline-offset:2px; }
+  select{
+    width:100%; padding:11px 13px; border:1px solid var(--line); background:#fff;
+    border-radius:3px; font-family:var(--sans); font-size:15.5px; color:var(--ink);
+  }
+  .filebox{ border:1px dashed var(--line); border-radius:3px; padding:14px; background:#f7f3e7; font-size:14.5px; }
+  .filebox input{ font-size:14px; }
+  .filebox .status{ margin-top:9px; font-size:13.5px; color:var(--moss); font-weight:600; }
+  .filebox .status.pending{ color:#7A6522; }
+  .row2{ display:flex; gap:16px; }
+  .row2 > div{ flex:1; }
+  @media (max-width: 560px){ .row2{ flex-direction:column; } }
+
+  .sectionhead{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:0.13em; color:var(--hint);
+    font-weight:700; margin:34px 0 14px; padding-bottom:7px; border-bottom:1px solid var(--line);
+  }
+
+  .theme-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+  .theme-option{
+    flex:1; min-width:132px; position:relative; border:2px solid var(--line); border-radius:8px;
+    padding:12px 12px 11px; cursor:pointer; background:#fff;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .theme-option:hover{ border-color:#a89f89; }
+  .theme-option input{ position:absolute; top:11px; right:11px; width:19px; height:19px; margin:0; accent-color:var(--rust); cursor:pointer; }
+  .theme-option .swatches{ display:flex; gap:6px; margin-bottom:10px; }
+  .theme-option .swatch{ width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+  .theme-option .tname{ font-size:14.5px; font-weight:600; color:var(--ink); padding-right:22px; }
+  .theme-option.selected{ border-color:var(--theme-accent, var(--rust)); box-shadow: 0 0 0 2px var(--theme-accent, var(--rust)) inset, 0 2px 8px rgba(30,25,15,0.08); }
+
+  .warn{ border:1px solid var(--rust); background:#f4ded9; color:#7d2c1a; border-radius:4px; padding:12px 14px; font-size:14.5px; line-height:1.55; margin-bottom:22px; }
+
+  .btnrow{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+  .act-btn{
+    min-height:44px; padding:11px 18px; background:var(--rust); color:#fdf8ee; border:2px solid var(--rust);
+    border-radius:4px; font-family:var(--sans); font-size:15px; font-weight:700; cursor:pointer;
+  }
+  .act-btn:hover:not(:disabled){ background:#82392a; border-color:#82392a; }
+  .act-btn.sec{ background:#fff; color:var(--rust); }
+  .act-btn.sec:hover:not(:disabled){ background:var(--rust); color:#fdf8ee; }
+  .act-btn:disabled{ background:#e2dbc8; border-color:#c9beac; color:#4a4436; cursor:not-allowed; }
+
+  .progress{ height:10px; background:var(--paper-dim); border:1px solid var(--line); border-radius:999px; overflow:hidden; margin-top:12px; }
+  .progress > i{ display:block; height:100%; width:0; background:var(--rust); }
+
+  .piclist{ margin-top:14px; display:flex; flex-direction:column; gap:12px; }
+  .pic{ display:grid; grid-template-columns:96px 1fr; gap:14px; border:1px solid var(--line); border-radius:5px; background:#fff; padding:12px; }
+  .pic.off{ background:#f2eee3; border-style:dashed; }
+  .pic.off img{ filter:grayscale(1); }
+  .pic img{ width:96px; height:96px; object-fit:cover; border-radius:3px; background:var(--paper-dim); display:block; }
+  .pic .field{ margin-bottom:12px; }
+  .pic textarea{ min-height:70px; }
+  .pic .tools{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .pic .tools .check{ min-height:44px; align-items:center; margin-right:6px; }
+  .pic .tools button{
+    min-width:44px; min-height:44px; font-family:var(--sans); font-size:16px; font-weight:700;
+    border:1px solid var(--line); border-radius:4px; background:var(--paper-dim); color:var(--ink); cursor:pointer;
+  }
+  .pic .tools button:hover{ background:var(--paper); }
+  .pic .fname{ font-size:13.5px; line-height:1.5; color:var(--hint); margin:8px 0 0; word-break:break-word; }
+  @media (max-width: 560px){ .pic{ grid-template-columns:1fr; } .pic img{ width:100%; height:160px; } }
+
+  .sizebar{
+    border:1px solid var(--line); border-radius:4px; background:#f7f3e7;
+    padding:11px 14px; font-size:14px; line-height:1.5; color:var(--moss); margin-bottom:22px; font-weight:600;
+  }
+  .sizebar.warn{ background:#f7efd9; color:#6E5A1C; }
+  .sizebar.over{ background:#f4ded9; color:#7d2c1a; }
+
+  .generate-btn{
+    width:100%; padding:17px; background:var(--rust); color:#fdf8ee; border:none; border-radius:4px;
+    font-size:17px; font-weight:700; letter-spacing:0.02em; cursor:pointer; margin-top:8px; font-family:var(--sans);
+  }
+  .generate-btn:disabled{ background:#c9beac; color:#4a4436; cursor:not-allowed; }
+  .generate-btn:hover:not(:disabled){ background:#82392a; }
+  .msg{ margin-top:12px; font-size:14.5px; line-height:1.55; padding:10px 12px; border-radius:3px; display:none; }
+  .msg.ok{ display:block; background:#e7ecdf; color:#3f4a34; }
+  .msg.err{ display:block; background:#f4ded9; color:#7d2c1a; }
+  .msg.info{ display:block; background:#f7f3e7; color:var(--ink); border:1px solid var(--line); }
+
+  details.dc{ border:1px solid var(--line); border-radius:4px; background:#f7f3e7; padding:14px 16px; margin-bottom:20px; }
+  details.dc summary{ cursor:pointer; font-size:14px; text-transform:uppercase; letter-spacing:0.09em; color:var(--moss); font-weight:600; padding:2px 0; min-height:28px; }
+  details.dc summary::marker{ color:var(--rust); }
+  details.dc[open] summary{ margin-bottom:12px; }
+  details.dc .panel-sub{ font-size:13.5px; color:var(--hint); margin:0 0 16px; line-height:1.55; }
+  .field-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0 16px; }
+  .field-grid .field{ margin-bottom:16px; }
+  .field-grid label{ text-transform:none; letter-spacing:0; font-size:14px; }
+  .field-grid label .hint{ display:block; font-size:13px; color:var(--hint); font-weight:400; margin-top:3px; line-height:1.5; }
+  .meta-btn{
+    width:100%; padding:12px; background:transparent; color:var(--moss); border:1px solid var(--line);
+    border-radius:4px; font-size:14.5px; font-weight:600; cursor:pointer; margin-top:10px; font-family:var(--sans);
+  }
+  .meta-btn:hover{ background:#f2ecdd; }
+
+  .preview-pane{ background:var(--paper-dim); border-left:1px solid var(--line); padding:28px 22px; position:sticky; top:0; min-height:100vh; }
+  .preview-pane .label{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.12em; color:var(--hint); margin-bottom:14px; font-weight:600; }
+  .phone-frame{ background:#fbf8ef; border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 8px 24px rgba(30,25,15,0.10); }
+  #previewFrame{ width:100%; height:660px; border:none; border-radius:6px; background:#fbf8ef; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Piwigo Albumbygger</h1>
+  <span>Hent et album fra Piwigo og byg et billedalbum i én fil · skal ligge på galleriets egen webadresse · version 2.0</span>
+</div>
+
+<div class="layout">
+  <div class="form-pane">
+
+    <div id="originWarn" class="warn" hidden></div>
+
+    <div class="field">
+      <label for="loadPage">Indlæs eksisterende album (valgfri)</label>
+      <div class="filebox">
+        <input type="file" id="loadPage" accept=".html,text/html">
+        <div class="status" id="loadStatus">Ingen fil valgt</div>
+      </div>
+      <div class="hint">Vælg en albumfil (.html), som er lavet med denne udgave af værktøjet, for at rette i den. Billeder, tekster, tema og Dublin Core-felter kommer med tilbage. Album fra den tidligere udgave kan ikke indlæses. Hent dem i stedet igen fra Piwigo.</div>
+    </div>
+
+    <div class="field">
+      <label>Tema</label>
+      <div class="theme-picker" id="themePicker">
+        <label class="theme-option" data-theme="original" style="--theme-accent:#9A4630">
+          <input type="radio" name="theme" value="original" checked>
+          <div class="swatches"><span class="swatch" style="background:#9A4630"></span><span class="swatch" style="background:#EDE7D8"></span></div>
+          <div class="tname">Oprindeligt</div>
+        </label>
+        <label class="theme-option" data-theme="historisk" style="--theme-accent:#385261">
+          <input type="radio" name="theme" value="historisk">
+          <div class="swatches"><span class="swatch" style="background:#385261"></span><span class="swatch" style="background:#6B7A5A"></span><span class="swatch" style="background:#F2F5F6"></span></div>
+          <div class="tname">Historisk Samfund</div>
+        </label>
+        <label class="theme-option" data-theme="lokalhistorisk2" style="--theme-accent:#9E2453">
+          <input type="radio" name="theme" value="lokalhistorisk2">
+          <div class="swatches"><span class="swatch" style="background:#9E2453"></span><span class="swatch" style="background:#FAF9F5"></span></div>
+          <div class="tname">Lokalhistorisk</div>
+        </label>
+        <label class="theme-option" data-theme="roedekors" style="--theme-accent:#E30A0B">
+          <input type="radio" name="theme" value="roedekors">
+          <div class="swatches"><span class="swatch" style="background:#E30A0B"></span><span class="swatch" style="background:#FFFFFF"></span></div>
+          <div class="tname">Røde Kors</div>
+        </label>
+        <label class="theme-option" data-theme="roskildetv" style="--theme-accent:#B03035">
+          <input type="radio" name="theme" value="roskildetv">
+          <div class="swatches"><span class="swatch" style="background:#B03035"></span><span class="swatch" style="background:conic-gradient(#4DB0E8 0% 17%, #3576BA 17% 33%, #8E2D62 33% 50%, #B03035 50% 67%, #E8803A 67% 83%, #EFAF45 83% 100%)"></span></div>
+          <div class="tname">Roskilde TV</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="sectionhead">Hent fra Piwigo</div>
+
+    <div class="field">
+      <label for="albumUrl">Adresse på albummet</label>
+      <input type="text" id="albumUrl" inputmode="url" placeholder="https://sfbbilleder.eu/index.php?/category/25">
+      <div class="hint">Kopiér adressen fra browseren, når du står i albummet i Piwigo. Adressen skal indeholde albummets nummer, fx <code>…/category/25</code>.</div>
+      <div class="btnrow">
+        <button class="act-btn" id="btnFetch" type="button">Hent albummets oplysninger</button>
+      </div>
+      <div class="msg" id="fetchMsg"></div>
+    </div>
+
+    <div id="picsBox" hidden>
+      <div class="field">
+        <label>Billeder i albummet</label>
+        <div class="hint" style="margin-top:0">Fjern fluebenet ved de billeder, der ikke skal med. Titel og beskrivelse er hentet fra Piwigo og kan rettes her. Alt-teksten læses op for blinde. Står den tom, bruges titlen.</div>
+        <div class="btnrow">
+          <button class="act-btn sec" type="button" id="btnAll">Vælg alle</button>
+          <button class="act-btn sec" type="button" id="btnNone">Fravælg alle</button>
+        </div>
+        <div class="piclist" id="piclist"></div>
+      </div>
+    </div>
+
+    <div id="dlBox" hidden>
+      <div class="field">
+        <label>Hent billedfilerne</label>
+        <div class="hint" style="margin-top:0">Billederne hentes ét ad gangen og bruges to steder: originalerne kan gemmes i en ZIP-fil i fuld størrelse, og en nedskaleret kopi (1600 px) bygges ind i albumfilen.</div>
+        <div class="btnrow">
+          <button class="act-btn" id="btnDownload" type="button">Hent de valgte billeder</button>
+        </div>
+        <div class="progress" id="bar" hidden><i></i></div>
+        <div class="msg" id="dlMsg"></div>
+        <div class="btnrow">
+          <button class="act-btn sec" id="btnZip" type="button" disabled>Gem originalerne som ZIP</button>
+          <button class="act-btn sec" id="btnJson" type="button" disabled>Gem album.json</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sectionhead">Albummets tekst</div>
+
+    <div class="field">
+      <label for="title">Titel</label>
+      <input type="text" id="title" placeholder="fx Stjernevinge">
+      <div class="hint">Udfyldes fra Piwigo, men kan rettes.</div>
+    </div>
+
+    <div class="field">
+      <label for="place">Sted (valgfri)</label>
+      <input type="text" id="place" placeholder="fx Jakobskirken, Roskilde · 2019">
+      <div class="hint">Står under titlen og udfylder automatisk <code>dc.coverage</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="desc">Beskrivelse</label>
+      <textarea id="desc" placeholder="Skriv om albummet …"></textarea>
+      <div class="hint">Udfyldes fra Piwigo. Markdown: <code>## Overskrift</code>, <code>### Underoverskrift</code>, <code>**fed**</code>, <code>*kursiv*</code>, <code>- punkt</code>, <code>1. punkt</code>, <code>&gt; citat</code>, <code>[tekst](https://…)</code>, <code>---</code> for vandret streg og <code>`kode`</code>.</div>
+    </div>
+
+    <div class="field">
+      <label for="shareImage">Webadresse til delingsbillede (valgfri)</label>
+      <input type="text" id="shareImage" inputmode="url" placeholder="https://sfbbilleder.eu/del/stjernevinge.jpg">
+      <div class="hint">Billederne inde i filen kan ikke læses af fx Facebook. Skal albummet deles, så læg ét af billederne op som selvstændig fil og skriv adressen her.</div>
+    </div>
+
+    <div class="sectionhead">Knap i bunden (valgfri)</div>
+
+    <div class="field">
+      <div class="row2">
+        <div><input type="text" id="ctaText" placeholder="Knaptekst — fx Se hele galleriet" aria-label="Knaptekst"></div>
+        <div><input type="text" id="ctaUrl" inputmode="url" placeholder="https://..." aria-label="Knappens adresse"></div>
+      </div>
+      <div class="hint">Brug hele webadresser med <code>https://</code> foran. Knappen vises kun, når både tekst og adresse er udfyldt.</div>
+    </div>
+
+    <div class="sectionhead">Hjem-knap og bunden af albummet</div>
+
+    <div class="field">
+      <label for="homeMode">Hjem-knap øverst (valgfri)</label>
+      <select id="homeMode">
+        <option value="auto" selected>Automatisk — vises kun når filen er del af en app eller samling</option>
+        <option value="always">Altid vist</option>
+        <option value="never">Aldrig vist</option>
+      </select>
+      <div class="row2" style="margin-top:10px">
+        <div><input type="text" id="homeLabel" placeholder="Knaptekst — fx Hjem" aria-label="Hjem-knappens tekst"></div>
+        <div><input type="text" id="homeUrl" placeholder="index.html" aria-label="Hjem-knappens adresse"></div>
+      </div>
+      <div class="hint"><strong>Automatisk</strong> er det normale valg: filen finder selv ud af, om den ligger sammen med en forside, og viser først da knappen. Åbnes den alene, bliver knappen væk af sig selv. I forhåndsvisningen vises den altid, så du kan se, hvor den sidder.</div>
+    </div>
+
+    <div class="field">
+      <label>Nederst på den færdige side</label>
+      <div class="check-row">
+        <label class="check"><input type="checkbox" id="visGem" checked>
+          <span>Vis knappen <strong>Gem filen</strong></span></label>
+        <label class="check"><input type="checkbox" id="visOmFil" checked>
+          <span>Vis den foldede liste <strong>Om denne fil</strong></span></label>
+      </div>
+      <div class="hint">Slår du dem fra, forsvinder de kun fra den synlige side. Dublin Core-oplysningerne følger stadig med som skjulte meta-felter i toppen af filen. Brug det, når albummet vises inde på et website.</div>
+    </div>
+
+    <details class="dc" id="dcDetails">
+      <summary>Dublin Core-metadata</summary>
+      <p class="panel-sub">De 15 felter følger med ind i den færdige fil — både som skjulte oplysninger i toppen og som en foldet liste nederst i albummet. De er det, der gør filen mulig at finde igen om mange år.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="dcTitle">Titel <span class="hint">dc.title — udfyldes automatisk fra titlen</span></label>
+          <input type="text" id="dcTitle">
+        </div>
+        <div class="field">
+          <label for="dcCreator">Ophav / skaber <span class="hint">dc.creator — fotografen eller den der har skabt materialet</span></label>
+          <input type="text" id="dcCreator" placeholder="F.eks. Fotograf Anders Jensen">
+        </div>
+        <div class="field">
+          <label for="dcSubject">Emne / nøgleord <span class="hint">dc.subject — adskil med semikolon</span></label>
+          <input type="text" id="dcSubject" placeholder="Jakobskirken; udsmykning; kunst">
+        </div>
+        <div class="field">
+          <label for="dcDescription">Beskrivelse <span class="hint">dc.description — udfyldes automatisk fra beskrivelsen</span></label>
+          <input type="text" id="dcDescription">
+        </div>
+        <div class="field">
+          <label for="dcPublisher">Udgiver / område <span class="hint">dc.publisher — vælg område, så filen kan filtreres i søgeindekset</span></label>
+          <select id="dcPublisher">
+            <option value="">(ikke valgt)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcContributor">Bidragyder <span class="hint">dc.contributor — den der har redigeret, fotograferet eller registreret</span></label>
+          <input type="text" id="dcContributor">
+        </div>
+        <div class="field">
+          <label for="dcDate">Dato <span class="hint">dc.date — helst ÅÅÅÅ-MM-DD, men fx "ca. 1955" er også i orden. Foreslås ud fra billedernes datoer i Piwigo</span></label>
+          <input type="text" id="dcDate" placeholder="2019-05-14">
+        </div>
+        <div class="field">
+          <label for="dcType">Type <span class="hint">dc.type — DCMI-typeordforråd</span></label>
+          <select id="dcType">
+            <option value="Text">Text</option>
+            <option value="Image" selected>Image</option>
+            <option value="Sound">Sound</option>
+            <option value="MovingImage">MovingImage</option>
+            <option value="InteractiveResource">InteractiveResource</option>
+            <option value="Collection">Collection</option>
+            <option value="Event">Event</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dcFormat">Format <span class="hint">dc.format — filens tekniske format</span></label>
+          <input type="text" id="dcFormat" value="text/html">
+        </div>
+        <div class="field">
+          <label for="dcIdentifier">Identifikator <span class="hint">dc.identifier — foreslås automatisk ud fra område og titel</span></label>
+          <input type="text" id="dcIdentifier" placeholder="F.eks. SFB-album-stjernevinge-2026">
+        </div>
+        <div class="field">
+          <label for="dcSource">Kilde <span class="hint">dc.source — hvor billederne stammer fra. Udfyldes med albummets adresse i Piwigo</span></label>
+          <input type="text" id="dcSource" placeholder="https://sfbbilleder.eu/index.php?/category/25">
+        </div>
+        <div class="field">
+          <label for="dcLanguage">Sprog <span class="hint">dc.language — sprogkode, fx da</span></label>
+          <input type="text" id="dcLanguage" value="da">
+        </div>
+        <div class="field">
+          <label for="dcRelation">Relation <span class="hint">dc.relation — beslægtet materiale, fx en artikelside</span></label>
+          <input type="text" id="dcRelation">
+        </div>
+        <div class="field">
+          <label for="dcCoverage">Dækning <span class="hint">dc.coverage — sted og/eller periode, udfyldes automatisk fra Sted</span></label>
+          <input type="text" id="dcCoverage" placeholder="Jakobskirken, Roskilde; 2019">
+        </div>
+        <div class="field">
+          <label for="dcRights">Rettigheder <span class="hint">dc.rights — ophavsret og vilkår for brug</span></label>
+          <input type="text" id="dcRights" placeholder="F.eks. © Syd for Banen - Lokalhistorisk Forening. Må gengives med kildeangivelse.">
+        </div>
+      </div>
+      <button class="meta-btn" id="metaJsonBtn" type="button">Gem metadata som separat JSON-fil</button>
+    </details>
+
+    <div class="sizebar" id="sizeBar">Ingen billeder valgt endnu</div>
+
+    <button class="generate-btn" id="generateBtn" type="button">Generér billedalbum (.html)</button>
+    <div class="msg" id="msgBox"></div>
+
+  </div>
+
+  <div class="preview-pane">
+    <div class="label">Forhåndsvisning</div>
+    <div class="phone-frame">
+      <iframe id="previewFrame" title="Forhåndsvisning af det færdige album"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const BUILDER_VERSION = 1;          // tælles op ved formatændringer
+const FORMAT = 'piwigo-album';
+const MAXPX = 1600, JPEGQ = 0.82;   // Builder-standard afsnit 8
+const PREVIEW_MAX = 24;             // forhåndsvisningen viser højst så mange billeder
+const ALBUM_ANBEFALET = 30;         // foreningens tommelfingerregel for et album
+
+const state = {
+  theme:'original',
+  title:'', place:'', desc:'', shareImage:'',
+  ctaText:'', ctaUrl:'',
+  homeMode:'auto', homeLabel:'', homeUrl:'',
+  visGem:true, visOmFil:true,
+  images:[],      // {id,file,name,caption,alt,dato,width,height,thumbUrl,elementUrl,med_ok,dataUrl,orig}
+  piwigo:null,    // {base,catId,albumUrl,albumName,albumComment}
+  iconData:'',
+  taellerBlock:''
+};
+
+/* ---------- Dublin Core ---------- */
+
+const DC_FIELDS = ['title','creator','subject','description','publisher','contributor',
+  'date','type','format','identifier','source','language','relation','coverage','rights'];
+
+const DC_LABELS = {
+  title:'Titel', creator:'Ophav', subject:'Emne', description:'Beskrivelse',
+  publisher:'Udgiver', contributor:'Bidragyder', date:'Dato', type:'Type',
+  format:'Format', identifier:'Identifikator', source:'Kilde', language:'Sprog',
+  relation:'Relation', coverage:'Dækning', rights:'Rettigheder'
+};
+
+// Udgivere / områder til dc.publisher og deres præfiks til dc.identifier.
+// Kopieret uændret fra Builder-standard afsnit 4.1.
+const PUBLISHERS = [
+  { name:'Historisk Samfund for Roskilde Amt',      prefix:'HSR'  },
+  { name:'Privat',                                  prefix:'PRIV' },
+  { name:'Roskilde TV',                             prefix:'RTV'  },
+  { name:'Røde Kors',                               prefix:'RKR'  },
+  { name:'Syd for Banen - Lokalhistorisk Forening', prefix:'SFB'  }
+];
+
+// Ældre navne, der rettes til det gældende navn, når en fil indlæses.
+const LEGACY_PUBLISHERS = { 'Røde Kors Roskilde':'Røde Kors' };
+
+const AREA_PREFIX = {};
+PUBLISHERS.forEach(p => { AREA_PREFIX[p.name] = p.prefix; });
+
+(function fillPublisherSelect(){
+  const sel = document.getElementById('dcPublisher');
+  PUBLISHERS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+})();
+
+function ensurePublisherOption(v){
+  const sel = document.getElementById('dcPublisher');
+  if (!v || Array.from(sel.options).some(o => o.value === v)) return;
+  const o = document.createElement('option');
+  o.value = v; o.textContent = v + ' (ikke på listen — vælg en udgiver)';
+  sel.appendChild(o);
+}
+
+function dcInputId(key){ return 'dc' + key.charAt(0).toUpperCase() + key.slice(1); }
+
+// Felter der spejler formularen, indtil man selv skriver i dem.
+const dcTouched = { title:false, description:false, coverage:false, identifier:false };
+
+const THEMES = {
+  original: {
+    label:'Oprindeligt',
+    accent:'#9A4630', accentDark:'#82392A', onAccent:'#FDF8EE',
+    paper:'#EDE7D8', surface:'#FBF8EF', ink:'#211E19', body:'#3A362E',
+    muted:'#6B6455', line:'#D8D0BA', quote:'#5A5646',
+    dPaper:'#171613', dSurface:'#201E1A', dInk:'#EDE7D8', dBody:'#DDD5C4',
+    dMuted:'#A79E8B', dLine:'#3A3630', dQuote:'#BDB5A3'
+  },
+  historisk: {
+    label:'Historisk Samfund',
+    accent:'#385261', accentDark:'#2A3D49', onAccent:'#FFFFFF',
+    paper:'#F2F5F6', surface:'#FFFFFF', ink:'#16232A', body:'#2A3A42',
+    muted:'#5F707A', line:'#DDE3E6', quote:'#4A5C66',
+    dPaper:'#151D22', dSurface:'#1D272D', dInk:'#E9EEF1', dBody:'#DBE3E8',
+    dMuted:'#A5B5BE', dLine:'#32414B', dQuote:'#B8C6CD'
+  },
+  lokalhistorisk2: {
+    label:'Lokalhistorisk (bordeaux)',
+    accent:'#9E2453', accentDark:'#7A1B40', onAccent:'#FAF9F5',
+    paper:'#F3EFEF', surface:'#FFFFFF', ink:'#2A1620', body:'#332028',
+    muted:'#6B5560', line:'#E4DADE', quote:'#5C3B48',
+    dPaper:'#1A1116', dSurface:'#241820', dInk:'#F7EFF2', dBody:'#E9DDE2',
+    dMuted:'#B9A4AD', dLine:'#3D2C34', dQuote:'#C7AEB8'
+  },
+  roedekors: {
+    label:'Røde Kors',
+    accent:'#E30A0B', accentDark:'#B80809', onAccent:'#FFFFFF',
+    paper:'#F5F5F5', surface:'#FFFFFF', ink:'#1A1A1A', body:'#2B2B2B',
+    muted:'#5A5A5A', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#161616', dSurface:'#1F1F1F', dInk:'#F2F2F2', dBody:'#E0E0E0',
+    dMuted:'#AAAAAA', dLine:'#383838', dQuote:'#C4C4C4'
+  },
+  roskildetv: {
+    label:'Roskilde TV',
+    accent:'#B03035', accentDark:'#8A2429', onAccent:'#FFFFFF',
+    paper:'#F4F4F4', surface:'#FFFFFF', ink:'#141414', body:'#222222',
+    muted:'#555555', line:'#E2E2E2', quote:'#333333',
+    dPaper:'#141414', dSurface:'#1E1E1E', dInk:'#F2F2F2', dBody:'#DEDEDE',
+    dMuted:'#A8A8A8', dLine:'#363636', dQuote:'#C2C2C2'
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Småfunktioner ---------- */
+
+function hexToRgba(hex, a){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+}
+
+function escapeHtml(str){
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stripMdToPlain(md, maxLen){
+  let t = (md || '')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+    .replace(/[#>*_`~]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen - 1).trim() + '…';
+  return t;
+}
+
+function slugify(s, fallback){
+  const out = (s || '').toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'oe').replace(/å/g,'aa')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return out || fallback || '';
+}
+
+function fmtSize(bytes){
+  const mb = bytes / (1024*1024);
+  return mb < 1 ? Math.round(bytes/1024) + ' KB' : mb.toFixed(1).replace('.', ',') + ' MB';
+}
+
+function showMsg(el, text, kind){
+  el.textContent = text;
+  el.className = 'msg ' + (kind || 'info');
+}
+
+function downloadBlob(content, type, filename){
+  const blob = content instanceof Blob ? content : new Blob([content], {type:type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ---------- Markdown (Builder-standard afsnit 6) ---------- */
+
+function inlineMd(s){
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+
+function mdToHtml(md){
+  if (!md) return '';
+  const lines = escapeHtml(md).replace(/\r/g,'').split('\n');
+  let html = '', inUl = false, inOl = false, para = [];
+  function flushPara(){
+    if (para.length){ html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; }
+  }
+  function closeLists(){
+    if (inUl){ html += '</ul>'; inUl = false; }
+    if (inOl){ html += '</ol>'; inOl = false; }
+  }
+  for (const line of lines){
+    if (/^\s*$/.test(line)){ flushPara(); closeLists(); continue; }
+    let m;
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)){ flushPara(); closeLists(); html += '<hr>'; continue; }
+    if ((m = line.match(/^(#{1,4})\s+(.*)$/))){
+      flushPara(); closeLists();
+      const level = Math.min(Math.max(m[1].length, 2), 5);
+      html += '<h' + level + '>' + inlineMd(m[2]) + '</h' + level + '>';
+      continue;
+    }
+    if ((m = line.match(/^[-*]\s+(.*)$/))){
+      flushPara();
+      if (inOl){ html += '</ol>'; inOl = false; }
+      if (!inUl){ html += '<ul>'; inUl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^\d+\.\s+(.*)$/))){
+      flushPara();
+      if (inUl){ html += '</ul>'; inUl = false; }
+      if (!inOl){ html += '<ol>'; inOl = true; }
+      html += '<li>' + inlineMd(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^&gt;\s?(.*)$/))){
+      flushPara(); closeLists();
+      html += '<blockquote>' + inlineMd(m[1]) + '</blockquote>';
+      continue;
+    }
+    closeLists();
+    para.push(line);
+  }
+  flushPara(); closeLists();
+  return html;
+}
+
+/* ---------- Dublin Core: indsamling og automatik ---------- */
+
+function normalizePublisher(v){
+  const t = (v || '').replace(/\s*[—–]\s*/g, ' - ').trim();
+  return LEGACY_PUBLISHERS[t] || t;
+}
+
+function collectDublinCore(){
+  const dc = {};
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    const val = el ? el.value.trim() : '';
+    if (val) dc[key] = val;
+  });
+  // Udgiveren skal stå som første emneord (Builder-standard 4.1).
+  if (dc.publisher){
+    const parts = (dc.subject || '').split(';').map(x => {
+      const t = x.trim(), n = normalizePublisher(t);
+      return AREA_PREFIX[n] ? n : t;
+    }).filter(Boolean);
+    const rest = parts.filter(p => p !== dc.publisher);
+    dc.subject = [dc.publisher].concat(rest).join('; ');
+  }
+  return dc;
+}
+
+function syncAutoDc(){
+  if (!dcTouched.title) $('dcTitle').value = state.title.trim();
+  if (!dcTouched.description) $('dcDescription').value = stripMdToPlain(state.desc, 300);
+  if (!dcTouched.coverage) $('dcCoverage').value = state.place.trim();
+  if (!dcTouched.identifier){
+    const prefix = AREA_PREFIX[$('dcPublisher').value];
+    const name = slugify(state.title, '');
+    const year = new Date().getFullYear();
+    $('dcIdentifier').value = (prefix && name) ? (prefix + '-album-' + name + '-' + year) : '';
+  }
+}
+
+function buildDcMetaTags(dc){
+  const lines = [];
+  DC_FIELDS.forEach(key => {
+    if (!dc[key]) return;
+    if (key === 'subject'){
+      dc[key].split(';').forEach(part => {
+        const v = part.trim();
+        if (v) lines.push('<meta name="DC.subject" content="' + escapeHtml(v) + '">');
+      });
+    } else {
+      lines.push('<meta name="DC.' + key + '" content="' + escapeHtml(dc[key]) + '">');
+    }
+  });
+  if (!lines.length) return '';
+  return '<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">\n' + lines.join('\n');
+}
+
+function buildDcSection(dc){
+  const rows = DC_FIELDS
+    .filter(key => dc[key])
+    .map(key => '<div class="meta-row"><dt>' + DC_LABELS[key] + ' <span class="dc-tag">dc.' + key + '</span></dt><dd>' + escapeHtml(dc[key]) + '</dd></div>');
+  if (!rows.length) return '';
+  return '<details class="meta" id="omfilen">'
+    + '<summary><span>Om denne fil</span><span class="chevron" aria-hidden="true">&#9662;</span></summary>'
+    + '<dl class="meta-list">' + rows.join('') + '</dl>'
+    + '</details>';
+}
+
+/* ---------- Piwigo ---------- */
+
+function parseAlbumUrl(u){
+  u = (u || '').trim();
+  if (!u) return null;
+  let url;
+  try { url = new URL(u, location.href); } catch(e){ return null; }
+  const hit = url.href.match(/category\/(\d+)/) || url.href.match(/[?&]cat_id=(\d+)/);
+  if (!hit) return null;
+  const base = url.origin + url.pathname.replace(/[^/]*$/, '');
+  return { base, catId: parseInt(hit[1], 10), albumUrl: url.href };
+}
+
+async function api(base, method, params){
+  const q = new URLSearchParams(Object.assign({format:'json', method}, params || {}));
+  const r = await fetch(base + 'ws.php?' + q.toString(), { credentials:'same-origin' });
+  if (!r.ok) throw new Error('Galleriet svarede med fejl ' + r.status + '.');
+  const j = await r.json();
+  if (j.stat !== 'ok') throw new Error(j.message || 'Galleriet afviste forespørgslen.');
+  return j.result;
+}
+
+function pwgText(s){
+  if (!s) return '';
+  return String(s)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#0?39;/g,"'")
+    .replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function fetchAlbum(){
+  const msg = $('fetchMsg');
+  const parsed = parseAlbumUrl($('albumUrl').value);
+  if (!parsed){ showMsg(msg, 'Adressen kan ikke læses. Den skal indeholde et albumnummer, fx …/category/25.', 'err'); return; }
+  if (location.protocol === 'file:'){
+    showMsg(msg, 'Der kan ikke hentes fra Piwigo, når byggeren er åbnet fra din computer. Åbn den fra galleriets webadresse i stedet.', 'err');
+    return;
+  }
+  if (parsed.base.indexOf(location.origin) !== 0){
+    showMsg(msg, 'Byggeren ligger på ' + location.origin + ', men galleriet ligger et andet sted. Browseren blokerer for hentningen. Læg denne fil på samme webadresse som galleriet.', 'err');
+    return;
+  }
+  $('btnFetch').disabled = true;
+  showMsg(msg, 'Henter oplysninger fra galleriet …');
+  try {
+    const liste = await api(parsed.base, 'pwg.categories.getList', { cat_id: parsed.catId });
+    const kat = (liste.categories || []).find(c => Number(c.id) === parsed.catId) || (liste.categories || [])[0];
+    if (!kat) throw new Error('Albummet blev ikke fundet. Er du logget ind i galleriet?');
+
+    let side = 0, alle = [];
+    for (;;){
+      const r = await api(parsed.base, 'pwg.categories.getImages',
+        { cat_id: parsed.catId, per_page: 500, page: side, order: 'rank' });
+      alle = alle.concat(r.images || []);
+      const p = r.paging || {};
+      if (!r.images || r.images.length === 0) break;
+      if (p.total_count != null && alle.length >= Number(p.total_count)) break;
+      side++;
+      if (side > 40) break;
+    }
+    if (!alle.length) throw new Error('Albummet indeholder ingen billeder — eller de er ikke synlige for dig.');
+
+    // Har man allerede rettet i teksterne (fx efter indlæsning), bevares rettelserne.
+    const tidligere = new Map(state.images.map(im => [String(im.id), im]));
+
+    state.piwigo = Object.assign({}, parsed, { albumName: pwgText(kat.name), albumComment: pwgText(kat.comment) });
+    state.images = alle.map(im => {
+      const d = im.derivatives || {};
+      const thumb = (d.small || d.thumb || d['2small'] || d.square || {}).url || im.element_url;
+      const før = tidligere.get(String(im.id));
+      const ny = {
+        id: im.id,
+        file: im.file || ('billede-' + im.id + '.jpg'),
+        name: pwgText(im.name) || (im.file || '').replace(/\.[^.]+$/, ''),
+        caption: pwgText(im.comment),
+        alt: '',
+        dato: (im.date_creation || '').slice(0, 10),
+        width: im.width, height: im.height,
+        thumbUrl: new URL(thumb, parsed.base).href,
+        elementUrl: new URL(im.element_url, parsed.base).href,
+        med_ok: true, dataUrl: '', orig: null
+      };
+      if (før){
+        ny.name = før.name; ny.caption = før.caption; ny.alt = før.alt;
+        ny.med_ok = før.med_ok; ny.dataUrl = før.dataUrl;
+      }
+      return ny;
+    });
+
+    if (!$('title').value.trim()) $('title').value = state.piwigo.albumName;
+    if (!$('desc').value.trim()) $('desc').value = state.piwigo.albumComment;
+    if (!$('dcSource').value.trim()) $('dcSource').value = parsed.albumUrl;
+    const datoer = state.images.map(i => i.dato).filter(Boolean).sort();
+    if (!$('dcDate').value.trim() && datoer.length){
+      $('dcDate').value = datoer[0] === datoer[datoer.length-1] ? datoer[0] : datoer[0] + '/' + datoer[datoer.length-1];
+    }
+
+    $('picsBox').hidden = false;
+    $('dlBox').hidden = false;
+    $('btnJson').disabled = false;
+    renderPicList();
+    const flere = state.images.length > ALBUM_ANBEFALET
+      ? ' Det er flere end ' + ALBUM_ANBEFALET + '. Overvej at fravælge nogle.' : '';
+    showMsg(msg, 'Fundet: "' + state.piwigo.albumName + '" med ' + state.images.length + ' billeder. Teksterne er hentet med.' + flere, 'ok');
+    renderPreview();
+  } catch(e){
+    showMsg(msg, e.message || String(e), 'err');
+  } finally {
+    $('btnFetch').disabled = false;
+  }
+}
+
+/* ---------- Billedlisten ---------- */
+
+function valgte(){ return state.images.filter(i => i.med_ok); }
+
+function picInfo(im, i){
+  return 'Billede ' + (i+1) + ' · ' + escapeHtml(im.file)
+    + (im.med_ok ? '' : ' · <strong>ikke med i albummet</strong>')
+    + (im.dataUrl ? ' · hentet, ca. ' + fmtSize(im.dataUrl.length * 0.75) + ' i albumfilen' : ' · ikke hentet endnu');
+}
+
+function renderPicList(focus){
+  const box = $('piclist');
+  box.innerHTML = '';
+  state.images.forEach((im, i) => {
+    const d = document.createElement('div');
+    d.className = 'pic' + (im.med_ok ? '' : ' off');
+    d.innerHTML =
+      '<img src="' + escapeHtml(im.dataUrl || im.thumbUrl) + '" alt="">'
+      + '<div class="meta">'
+      +   '<div class="field"><label for="pt' + i + '">Titel</label><input type="text" id="pt' + i + '" value="' + escapeHtml(im.name) + '"></div>'
+      +   '<div class="field"><label for="pc' + i + '">Billedbeskrivelse</label><textarea id="pc' + i + '">' + escapeHtml(im.caption) + '</textarea></div>'
+      +   '<div class="field"><label for="pa' + i + '">Alt-tekst</label><input type="text" id="pa' + i + '" value="' + escapeHtml(im.alt) + '" placeholder="Står feltet tomt, bruges titlen"></div>'
+      +   '<div class="tools">'
+      +     '<label class="check"><input type="checkbox" id="pm' + i + '"' + (im.med_ok ? ' checked' : '') + '><span>Med i albummet</span></label>'
+      +     '<button type="button" data-op="up" aria-label="Flyt billede ' + (i+1) + ' op">↑</button>'
+      +     '<button type="button" data-op="down" aria-label="Flyt billede ' + (i+1) + ' ned">↓</button>'
+      +   '</div>'
+      +   '<p class="fname">' + picInfo(im, i) + '</p>'
+      + '</div>';
+    d.querySelector('#pt' + i).addEventListener('input', e => { im.name = e.target.value; renderPreview(); });
+    d.querySelector('#pc' + i).addEventListener('input', e => { im.caption = e.target.value; renderPreview(); });
+    d.querySelector('#pa' + i).addEventListener('input', e => { im.alt = e.target.value; renderPreview(); });
+    d.querySelector('#pm' + i).addEventListener('change', e => {
+      im.med_ok = e.target.checked;
+      d.classList.toggle('off', !im.med_ok);
+      d.querySelector('.fname').innerHTML = picInfo(im, i);
+      renderPreview();
+    });
+    d.querySelector('[data-op=up]').addEventListener('click', () => move(i, -1));
+    d.querySelector('[data-op=down]').addEventListener('click', () => move(i, 1));
+    box.appendChild(d);
+  });
+  if (focus){
+    const el = box.children[focus.i] && box.children[focus.i].querySelector('[data-op=' + focus.op + ']');
+    if (el) el.focus();
+  }
+}
+
+function move(i, d){
+  const j = i + d;
+  if (j < 0 || j >= state.images.length) return;
+  const a = state.images;
+  [a[i], a[j]] = [a[j], a[i]];
+  renderPicList({ i:j, op: d < 0 ? 'up' : 'down' });
+  renderPreview();
+}
+
+/* ---------- Hentning og nedskalering af billedfiler ---------- */
+
+function loadImage(src){
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error('Billedet kunne ikke læses.'));
+    i.src = src;
+  });
+}
+
+async function nedskaler(blob){
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImage(url);
+    const skala = Math.min(1, MAXPX / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * skala));
+    c.height = Math.max(1, Math.round(img.naturalHeight * skala));
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', JPEGQ);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+// Lille ikon til <link rel="icon"> (Builder-standard 5.2), så det store billede ikke ligger i filen to gange.
+async function makeIcon(dataUrl){
+  const img = await loadImage(dataUrl);
+  const s = Math.min(img.naturalWidth, img.naturalHeight);
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 64, 64);
+  return c.toDataURL('image/jpeg', 0.8);
+}
+
+async function hentBilleder(){
+  const msg = $('dlMsg'), bar = $('bar');
+  const liste = state.images.filter(im => im.med_ok && !im.orig && im.elementUrl);
+  if (!valgte().length){ showMsg(msg, 'Der er ingen billeder valgt.', 'err'); return; }
+  if (!liste.length){
+    showMsg(msg, state.images.some(im => im.med_ok && !im.elementUrl)
+      ? 'Billederne er indlæst fra en albumfil. Tryk "Hent albummets oplysninger" først, hvis du vil hente originalerne igen.'
+      : 'Alle valgte billeder er allerede hentet.', 'info');
+    return;
+  }
+  $('btnDownload').disabled = true;
+  bar.hidden = false;
+  let fejl = 0, bytes = 0;
+  for (let n = 0; n < liste.length; n++){
+    const im = liste[n];
+    showMsg(msg, 'Henter billede ' + (n+1) + ' af ' + liste.length + ' …');
+    bar.firstElementChild.style.width = Math.round(n / liste.length * 100) + '%';
+    try {
+      const r = await fetch(im.elementUrl, { credentials:'same-origin' });
+      if (!r.ok) throw new Error('fejl ' + r.status);
+      const blob = await r.blob();
+      im.orig = { navn: im.file, blob };
+      bytes += blob.size;
+      im.dataUrl = await nedskaler(blob);
+    } catch(e){
+      fejl++;
+      im.med_ok = false;
+    }
+  }
+  bar.firstElementChild.style.width = '100%';
+  $('btnDownload').disabled = false;
+  $('btnZip').disabled = !state.images.some(im => im.orig);
+  renderPicList();
+  renderPreview();
+  showMsg(msg, 'Hentet ' + (liste.length - fejl) + ' billeder (' + fmtSize(bytes) + ' originaler).'
+    + (fejl ? ' ' + fejl + ' kunne ikke hentes og er fravalgt.' : ''), fejl ? 'err' : 'ok');
+}
+
+/* ---------- ZIP (uden komprimering — jpeg er komprimeret i forvejen) ---------- */
+
+const CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = CRC[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function dosTid(d){
+  return { t: ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() / 2)) & 0xFFFF,
+           d: (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF };
+}
+async function lavZip(filer){
+  const dele = [], central = [];
+  const now = dosTid(new Date());
+  let offset = 0;
+  const enc = new TextEncoder();
+  for (const f of filer){
+    const navn = enc.encode(f.navn);
+    const buf = new Uint8Array(await f.blob.arrayBuffer());
+    const crc = crc32(buf);
+    const len = buf.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true);
+    lh.setUint16(8,0,true); lh.setUint16(10,now.t,true); lh.setUint16(12,now.d,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,len,true); lh.setUint32(22,len,true);
+    lh.setUint16(26,navn.length,true); lh.setUint16(28,0,true);
+    dele.push(new Uint8Array(lh.buffer), navn, buf);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true);
+    ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true);
+    ch.setUint16(12,now.t,true); ch.setUint16(14,now.d,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,len,true); ch.setUint32(24,len,true);
+    ch.setUint16(28,navn.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true);
+    ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true);
+    ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), navn);
+    offset += 30 + navn.length + len;
+  }
+  let cdLen = 0;
+  for (const c of central) cdLen += c.length;
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true); eo.setUint16(4,0,true); eo.setUint16(6,0,true);
+  eo.setUint16(8,filer.length,true); eo.setUint16(10,filer.length,true);
+  eo.setUint32(12,cdLen,true); eo.setUint32(16,offset,true); eo.setUint16(20,0,true);
+  return new Blob(dele.concat(central).concat([new Uint8Array(eo.buffer)]), { type:'application/zip' });
+}
+
+function albumData(){
+  readForm(); syncAutoDc();
+  return {
+    format:'piwigo-album-data',
+    version:2,
+    hentet:new Date().toISOString(),
+    piwigo: state.piwigo ? { albumUrl:state.piwigo.albumUrl, catId:state.piwigo.catId, base:state.piwigo.base } : null,
+    album:{ titel:state.title, sted:state.place, beskrivelse:state.desc },
+    billeder: state.images.map(im => ({
+      id:im.id, fil:im.file, titel:im.name, beskrivelse:im.caption, alt:im.alt,
+      dato:im.dato, bredde:im.width, hoejde:im.height, med:im.med_ok
+    })),
+    dublinCore: collectDublinCore()
+  };
+}
+
+async function gemZip(){
+  const msg = $('dlMsg');
+  const navne = new Set();
+  const filer = [];
+  state.images.forEach(im => {
+    if (!im.orig) return;
+    let n = im.orig.navn, k = 2;
+    while (navne.has(n)){ n = im.orig.navn.replace(/(\.[^.]+)?$/, '-' + k + '$1'); k++; }
+    navne.add(n);
+    filer.push({ navn:'billeder/' + n, blob:im.orig.blob });
+  });
+  if (!filer.length){ showMsg(msg, 'Der er ingen hentede billeder at pakke.', 'err'); return; }
+  filer.push({ navn:'album.json', blob:new Blob([JSON.stringify(albumData(), null, 2)], {type:'application/json'}) });
+  showMsg(msg, 'Pakker ZIP-filen …');
+  try {
+    const z = await lavZip(filer);
+    downloadBlob(z, 'application/zip', slugify(state.title, 'piwigo-album') + '-billeder.zip');
+    showMsg(msg, 'ZIP-filen er gemt (' + fmtSize(z.size) + '). Den indeholder mappen billeder/ med originalerne og album.json.', 'ok');
+  } catch(e){
+    showMsg(msg, 'ZIP-filen kunne ikke laves: ' + e.message, 'err');
+  }
+}
+
+/* ---------- Selve albumfilen ---------- */
+
+function buildAlbumHTML(s, isPreview){
+  const t = THEMES[s.theme] || THEMES.original;
+  const dc = collectDublinCore();
+  const dcMeta = buildDcMetaTags(dc);
+  const dcBlock = (s.visOmFil === false) ? '' : buildDcSection(dc);
+  const pageLang = (dc.language || 'da').trim() || 'da';
+  const pageTitle = s.title.trim() || 'Billedalbum';
+  const safeName = slugify(s.title, 'billedalbum');
+
+  const homeMode = (s.homeMode === 'always' || s.homeMode === 'never') ? s.homeMode : 'auto';
+  const homeLabel = (s.homeLabel && s.homeLabel.trim()) ? s.homeLabel.trim() : 'Hjem';
+  const homeUrl = (s.homeUrl && s.homeUrl.trim()) ? s.homeUrl.trim() : 'index.html';
+  const homeVisible = homeMode === 'always' || (isPreview && homeMode !== 'never');
+  const homeBlock = homeMode === 'never' ? '' :
+    '<div class="homewrap' + (homeVisible ? ' show' : '') + '" id="topbar" data-mode="' + homeMode + '">'
+    + '<a class="home-btn" id="homeBtn" href="' + escapeHtml(homeUrl) + '">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-6h4v6"/></svg>'
+    + '<span>' + escapeHtml(homeLabel) + '</span></a></div>';
+
+  const alle = valgte();
+  const bil = isPreview ? alle.slice(0, PREVIEW_MAX) : alle;
+  const flere = alle.length - bil.length;
+
+  const cells = bil.map((im, i) => {
+    const src = im.dataUrl || (isPreview ? im.thumbUrl : '');
+    const altText = (im.alt || '').trim() || (im.name || '').trim() || im.file;
+    const navn = (im.name || '').trim();
+    return '<button class="cell" type="button" data-i="' + i + '" data-t="' + escapeHtml(navn) + '" data-c="' + escapeHtml(im.caption) + '"'
+      + ' aria-label="Vis billedet stort: ' + escapeHtml(navn || altText) + '">'
+      + '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(altText) + '" loading="lazy">'
+      + (navn ? '<span class="cap">' + escapeHtml(navn) + '</span>' : '')
+      + '</button>';
+  }).join('\n');
+
+  const gridBlock = bil.length
+    ? '<div class="grid">\n' + cells + '\n</div>\n'
+      + (flere > 0 ? '<p class="more">… og ' + flere + ' billeder mere i den færdige fil.</p>\n' : '')
+    : (isPreview ? '<p class="more">Billederne vises her, når albummet er hentet fra Piwigo.</p>\n' : '');
+
+  const ctaBlock = (s.ctaText.trim() && s.ctaUrl.trim())
+    ? '<div class="cta-wrap"><a class="cta-btn" href="' + escapeHtml(s.ctaUrl.trim()) + '" target="_blank" rel="noopener">' + escapeHtml(s.ctaText.trim()) + '</a></div>'
+    : '';
+
+  const saveBlock = (s.visGem === false) ? '' : '<div class="save-wrap"><button class="save-btn" id="dlBtn" type="button">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 20h16"/></svg>'
+    + '<span>Gem filen</span></button></div>'
+    + '<p class="save-note">Et billedalbum. Gemmer hele albummet som én fil på din egen computer.</p>';
+
+  const footParts = [];
+  if (dc.creator) footParts.push(escapeHtml(dc.creator));
+  if (dc.publisher) footParts.push(escapeHtml(dc.publisher));
+  const year = (dc.date && dc.date.match(/\d{4}/)) ? dc.date.match(/\d{4}/)[0] : String(new Date().getFullYear());
+  const footBlock = footParts.length
+    ? '<footer class="site-foot"><p>' + footParts.join(' · ') + ' · ' + year + '</p></footer>\n'
+    : '';
+
+  const sourceData = {
+    format: FORMAT, builderVersion: BUILDER_VERSION,
+    theme: s.theme, title: s.title, place: s.place, description: s.desc, shareImage: s.shareImage,
+    ctaText: s.ctaText, ctaUrl: s.ctaUrl,
+    homeMode: homeMode, homeLabel: s.homeLabel, homeUrl: s.homeUrl,
+    visGem: s.visGem !== false, visOmFil: s.visOmFil !== false,
+    images: bil.map(im => ({ id:im.id, file:im.file, title:im.name, caption:im.caption, alt:im.alt,
+      date:im.dato, width:im.width, height:im.height })),
+    piwigo: s.piwigo ? { albumUrl:s.piwigo.albumUrl, catId:s.piwigo.catId } : null,
+    dublinCore: dc
+  };
+
+  const ogDesc = stripMdToPlain(s.desc, 200);
+  const shareUrl = (s.shareImage || '').trim();
+  const iconSrc = isPreview ? '' : (s.iconData || '');
+  const taellerBlock = (s.taellerBlock && !isPreview) ? '\n' + s.taellerBlock + '\n' : '';
+
+  const css = `
+:root{
+  --accent:${t.accent}; --accent-dark:${t.accentDark}; --on-accent:${t.onAccent};
+  --paper:${t.paper}; --surface:${t.surface}; --ink:${t.ink}; --body:${t.body};
+  --muted:${t.muted}; --line:${t.line}; --quote:${t.quote};
+  --quote-line:${hexToRgba(t.accent, 0.35)};
+  --shadow:rgba(30,25,15,0.10);
+  --sans: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", sans-serif;
+  --fs:1;
+}
+body.dark{
+  --paper:${t.dPaper}; --surface:${t.dSurface}; --ink:${t.dInk}; --body:${t.dBody};
+  --muted:${t.dMuted}; --line:${t.dLine}; --quote:${t.dQuote};
+  --quote-line:${hexToRgba(t.accent, 0.55)};
+  --shadow:rgba(0,0,0,0.45);
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--paper); color:var(--body); font-family:var(--sans); line-height:1.65;}
+.site-head{position:sticky; top:0; z-index:40; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px var(--shadow);}
+.head-inner{max-width:1000px; margin:0 auto; padding:10px 18px; display:flex; align-items:center; gap:10px; min-height:56px;}
+.head-tools{margin-left:auto; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}
+.tool{background:transparent; border:none; color:var(--on-accent); cursor:pointer; font-family:var(--sans); font-size:16px; font-weight:700; padding:8px 11px; border-radius:6px; line-height:1; min-width:44px; min-height:44px;}
+.tool:hover{background:rgba(255,255,255,0.16);}
+.tool:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}
+.tool svg{width:22px; height:22px; display:block; margin:0 auto;}
+.tool.small{font-size:14px;}
+.homewrap{display:none;}
+.homewrap.show{display:block;}
+.home-btn{display:inline-flex; align-items:center; gap:8px; padding:7px 15px 7px 11px; min-height:44px; border-radius:999px; border:2px solid rgba(255,255,255,0.6); color:var(--on-accent); text-decoration:none; font-size:15.5px; font-weight:700;}
+.home-btn svg{width:18px; height:18px;}
+.home-btn:hover{background:rgba(255,255,255,0.16);}
+.home-btn:focus-visible{outline:3px solid var(--on-accent); outline-offset:2px;}
+main{max-width:1000px; margin:0 auto; padding:34px 18px 10px; font-size:calc(17.5px * var(--fs));}
+h1{font-size:2.15em; line-height:1.18; margin:0 0 10px; color:var(--ink); font-weight:700;}
+.place{font-size:1.05em; color:var(--muted); margin:0 0 18px;}
+.intro{max-width:70ch;}
+.intro h2{font-size:1.4em; line-height:1.25; color:var(--ink); margin:34px 0 12px; padding-left:14px; border-left:5px solid var(--accent);}
+.intro h3{font-size:1.15em; color:var(--ink); margin:26px 0 8px;}
+.intro p{margin:0 0 16px;}
+.intro ul, .intro ol{margin:0 0 16px; padding-left:22px;}
+.intro li{margin-bottom:6px;}
+.intro li::marker{color:var(--accent);}
+.intro a{color:var(--accent);}
+.intro blockquote{margin:20px 0; padding:6px 0 6px 18px; border-left:4px solid var(--quote-line); color:var(--quote); font-style:italic;}
+.intro code{background:var(--line); color:var(--ink); padding:1px 5px; border-radius:4px; font-size:0.9em;}
+.intro hr{border:none; border-top:1px solid var(--line); margin:28px 0;}
+.grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px; margin:30px 0 10px;}
+.cell{display:block; padding:0; margin:0; border:1px solid var(--line); background:var(--surface); border-radius:8px; overflow:hidden; cursor:zoom-in; text-align:left; font:inherit; color:var(--ink); box-shadow:0 3px 10px var(--shadow);}
+.cell img{width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:var(--line);}
+.cap{display:block; padding:9px 12px 11px; font-size:0.85em; line-height:1.4; color:var(--ink);}
+.cell:focus-visible{outline:3px solid var(--accent); outline-offset:2px;}
+.more{color:var(--muted); font-style:italic; font-size:0.92em;}
+.cta-wrap{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:40px 0 10px;}
+.cta-btn{background:var(--accent); color:var(--on-accent); text-decoration:none; font-weight:700; font-size:1.02em; padding:14px 26px; border-radius:8px; box-shadow:0 3px 10px var(--shadow); min-height:48px;}
+.cta-btn:hover{background:var(--accent-dark);}
+.cta-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.save-wrap{display:flex; justify-content:center; margin:34px 0 6px;}
+.save-btn{display:inline-flex; align-items:center; gap:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); border-radius:999px; font-family:var(--sans); font-size:1em; font-weight:700; padding:13px 24px; cursor:pointer; min-height:48px;}
+.save-btn:hover{background:var(--accent); color:var(--on-accent);}
+.save-btn:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.save-btn svg{width:20px; height:20px;}
+.save-note{text-align:center; font-size:0.85em; font-style:italic; color:var(--muted); margin:10px 0 0;}
+.meta{margin:40px 0 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:14px 18px;}
+.meta summary{cursor:pointer; font-weight:700; color:var(--ink); font-size:0.98em; display:flex; justify-content:space-between; align-items:center; list-style:none; min-height:28px;}
+.meta summary::-webkit-details-marker{display:none;}
+.meta summary:focus-visible{outline:3px solid var(--accent); outline-offset:3px;}
+.meta[open] summary{margin-bottom:12px;}
+.meta-list{margin:0;}
+.meta-row{padding:7px 0; border-top:1px solid var(--line);}
+.meta-row dt{font-weight:700; color:var(--ink); font-size:0.88em;}
+.meta-row dd{margin:2px 0 0; font-size:0.93em; color:var(--body); word-break:break-word;}
+.dc-tag{font-weight:400; color:var(--muted); font-size:0.88em;}
+.site-foot{margin-top:44px; background:var(--accent-dark); color:var(--on-accent);}
+.site-foot p{max-width:1000px; margin:0 auto; padding:20px 18px; text-align:center; font-size:14.5px;}
+#toTop{position:fixed; right:18px; bottom:18px; z-index:30; background:var(--accent); color:var(--on-accent); border:none; border-radius:50%; width:48px; height:48px; cursor:pointer; box-shadow:0 4px 14px var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s ease;}
+#toTop.show{opacity:1; pointer-events:auto;}
+#toTop:focus-visible{outline:3px solid var(--ink); outline-offset:3px;}
+#toTop svg{width:22px; height:22px; margin:0 auto; display:block;}
+.lb{position:fixed; inset:0; height:100%; height:100dvh; background:rgba(10,9,7,.94); display:flex; flex-direction:column; z-index:60; overscroll-behavior:contain;}
+.lb[hidden]{display:none;}
+.lb figure{margin:0; flex:1 1 auto; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; padding:10px;}
+.lb img{max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain;}
+.lb .txt{flex:0 0 auto; color:#F2ECDD; padding:10px 20px 12px; max-width:900px; width:100%; margin:0 auto; text-align:center; max-height:22vh; overflow:auto; font-size:calc(16.5px * var(--fs));}
+.lb .txt.tom{display:none;}
+.lb .txt b{display:block; font-size:1.2em; margin-bottom:6px;}
+.lb .txt p{margin:0; line-height:1.5; color:#E4DDCB; white-space:pre-line;}
+.lb .nav{flex:0 0 auto; display:flex; justify-content:center; gap:12px; padding:0 12px 16px; padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+.lb button{min-width:44px; min-height:44px; font-size:17px; border-radius:999px; border:2px solid #F2ECDD; background:transparent; color:#F2ECDD; cursor:pointer; padding:8px 18px; font-family:var(--sans);}
+.lb button:hover{background:#F2ECDD; color:#1B1A16;}
+.lb button:focus-visible{outline:3px solid #fff; outline-offset:2px;}
+@media (max-height:560px){ .lb .txt{max-height:18vh; padding:6px 16px 8px;} }
+@media (max-width:600px){ .lb button{padding:8px 14px; font-size:16px;} .lb .nav{gap:8px;} h1{font-size:1.75em;} main{padding:24px 16px 10px;} .grid{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px;} }
+@media print{ .site-head, #toTop, .lb, .save-wrap, .save-note{display:none !important;} body{background:#fff;} }
+`;
+
+  const script = `
+(function(){
+  var fs = 1;
+  function setFs(v){ fs = Math.min(1.7, Math.max(0.85, Math.round(v * 10) / 10)); document.documentElement.style.setProperty("--fs", fs.toFixed(2)); }
+  document.getElementById("fontInc").addEventListener("click", function(){ setFs(fs + 0.1); });
+  document.getElementById("fontDec").addEventListener("click", function(){ setFs(fs - 0.1); });
+  document.getElementById("darkBtn").addEventListener("click", function(){
+    var on = document.body.classList.toggle("dark");
+    document.getElementById("iconMoon").style.display = on ? "none" : "block";
+    document.getElementById("iconSun").style.display = on ? "block" : "none";
+  });
+  var toTop = document.getElementById("toTop");
+  window.addEventListener("scroll", function(){ toTop.classList.toggle("show", window.scrollY > 400); });
+  toTop.addEventListener("click", function(){ window.scrollTo({top:0, behavior:"smooth"}); });
+
+  /* --- Lysbord: billedet vises stort, med titel og beskrivelse --- */
+  var cells = document.querySelectorAll(".cell");
+  var lb = document.getElementById("lb"), li = document.getElementById("lbimg");
+  var lt = document.getElementById("lbt"), lc = document.getElementById("lbc"), ltx = lb.querySelector(".txt");
+  var closeBtn = document.getElementById("lbclose"), cur = 0, last = null;
+  function vis(i){
+    if (!cells.length) return;
+    cur = (i + cells.length) % cells.length;
+    var c = cells[cur], im = c.querySelector("img");
+    li.src = im.src; li.alt = im.alt || "";
+    lt.textContent = c.getAttribute("data-t") || "";
+    lc.textContent = c.getAttribute("data-c") || "";
+    ltx.className = "txt" + ((lt.textContent || lc.textContent) ? "" : " tom");
+    lb.hidden = false;
+    document.body.style.overflow = "hidden";
+    closeBtn.focus();
+  }
+  function luk(){
+    if (lb.hidden) return;
+    lb.hidden = true;
+    li.removeAttribute("src");
+    document.body.style.overflow = "";
+    if (last) last.focus();
+  }
+  Array.prototype.forEach.call(cells, function(c, i){
+    c.addEventListener("click", function(){ last = c; vis(i); });
+  });
+  lb.querySelector("figure").addEventListener("click", function(e){ if (e.target !== li) luk(); });
+  closeBtn.addEventListener("click", luk);
+  document.getElementById("lbprev").addEventListener("click", function(){ vis(cur - 1); });
+  document.getElementById("lbnext").addEventListener("click", function(){ vis(cur + 1); });
+  document.addEventListener("keydown", function(e){
+    if (lb.hidden) return;
+    if (e.key === "Escape") luk();
+    if (e.key === "ArrowLeft") vis(cur - 1);
+    if (e.key === "ArrowRight") vis(cur + 1);
+  });
+
+  /* --- Gem filen: en ren kopi af albummet, som det var, da det blev lavet --- */
+  var dlBtn = document.getElementById("dlBtn");
+  if (dlBtn) dlBtn.addEventListener("click", function(){
+    var bar2 = document.getElementById("topbar");
+    if (bar2 && bar2.getAttribute("data-mode") !== "auto") bar2 = null;
+    var barWasShown = bar2 && bar2.classList.contains("show");
+    var wasDark = document.body.classList.contains("dark");
+    var fsWas = document.documentElement.style.getPropertyValue("--fs");
+    var topWasShown = toTop.classList.contains("show");
+    if (bar2) bar2.classList.remove("show");
+    document.body.classList.remove("dark");
+    document.getElementById("iconMoon").style.display = "block";
+    document.getElementById("iconSun").style.display = "none";
+    document.documentElement.style.removeProperty("--fs");
+    toTop.classList.remove("show");
+    var full = "<!DOCTYPE html>\\n" + document.documentElement.outerHTML;
+    if (bar2 && barWasShown) bar2.classList.add("show");
+    if (wasDark){
+      document.body.classList.add("dark");
+      document.getElementById("iconMoon").style.display = "none";
+      document.getElementById("iconSun").style.display = "block";
+    }
+    if (fsWas) document.documentElement.style.setProperty("--fs", fsWas);
+    if (topWasShown) toTop.classList.add("show");
+    try {
+      var blob = new Blob([full], {type:"text/html"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = ${JSON.stringify(safeName + '.html')};
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    } catch(e){ alert("Filen kunne ikke gemmes her i browseren."); }
+  });
+
+  /* --- Hjem-knappen: i "automatisk" vises den kun, hvis filen er del af noget større --- */
+  var bar = document.getElementById("topbar");
+  if (bar){
+    var link = document.getElementById("homeBtn");
+    var mode = ${JSON.stringify(homeMode)};
+    var target = ${JSON.stringify(homeUrl)};
+    function show(){ bar.classList.add("show"); }
+    var fromUrl = null;
+    try { var p = new URLSearchParams(location.search); fromUrl = p.get("hjem") || p.get("home"); } catch(e){}
+    if (fromUrl){ target = fromUrl; }
+    link.setAttribute("href", target);
+    if (mode === "always" || fromUrl){ show(); }
+    else if (mode === "auto"){
+      var path = (location.pathname || "").toLowerCase();
+      var isIndex = path.charAt(path.length-1) === "/" || path.indexOf("/index.html") === path.length - 11;
+      if (!isIndex){
+        var shown = false;
+        try {
+          if (window.matchMedia && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: minimal-ui)").matches)){ show(); shown = true; }
+        } catch(e){}
+        if (!shown && navigator.standalone === true){ show(); shown = true; }
+        if (!shown){
+          try {
+            if (document.referrer){
+              var ref = new URL(document.referrer), here = new URL(location.href);
+              var refDir = ref.pathname.slice(0, ref.pathname.lastIndexOf("/"));
+              var hereDir = here.pathname.slice(0, here.pathname.lastIndexOf("/"));
+              if (ref.origin === here.origin && refDir === hereDir && ref.href !== here.href){ show(); shown = true; }
+            }
+          } catch(e){}
+        }
+        if (!shown && (location.protocol === "http:" || location.protocol === "https:")){
+          try { fetch(target, {method:"HEAD"}).then(function(r){ if (r && r.ok) show(); }).catch(function(){}); } catch(e){}
+        }
+      }
+    }
+  }
+})();
+`;
+
+  return '<!DOCTYPE html>\n<html lang="' + escapeHtml(pageLang) + '">\n<head>\n'
+    + '<meta charset="UTF-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    + '<title>' + escapeHtml(pageTitle) + '</title>\n'
+    + '<meta property="og:type" content="website">\n'
+    + '<meta property="og:title" content="' + escapeHtml(pageTitle) + '">\n'
+    + (ogDesc ? '<meta property="og:description" content="' + escapeHtml(ogDesc) + '">\n' : '')
+    + (shareUrl ? '<meta property="og:image" content="' + escapeHtml(shareUrl) + '">\n<meta name="twitter:card" content="summary_large_image">\n' : '')
+    + (iconSrc ? '<link rel="icon" href="' + iconSrc + '">\n' : '')
+    + (dcMeta ? dcMeta + '\n' : '')
+    + '<script type="application/json" id="builder-source-data">' + JSON.stringify(sourceData).replace(/</g, '\\u003c') + '<\/script>\n'
+    + '<style>' + css + '</style>\n</head>\n<body>\n'
+    + '<header class="site-head">\n<div class="head-inner">\n'
+    + homeBlock
+    + '<div class="head-tools">'
+    + '<button class="tool small" id="fontDec" type="button" aria-label="Mindre skrift">-A</button>'
+    + '<button class="tool" id="fontInc" type="button" aria-label="Større skrift">+A</button>'
+    + '<button class="tool" id="darkBtn" type="button" aria-label="Skift mellem lys og mørk baggrund"><svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 15.4A8.6 8.6 0 0 1 8.6 3.6a8.6 8.6 0 1 0 11.8 11.8z"/></svg>'
+    + '<svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg></button>'
+    + '</div>\n</div>\n</header>\n'
+    + '<main id="top">\n'
+    + '<h1>' + escapeHtml(pageTitle) + '</h1>\n'
+    + (s.place.trim() ? '<p class="place">' + escapeHtml(s.place.trim()) + '</p>\n' : '')
+    + (s.desc.trim() ? '<div class="intro">' + mdToHtml(s.desc) + '</div>\n' : '')
+    + gridBlock + ctaBlock + saveBlock + dcBlock
+    + '\n</main>\n' + footBlock
+    + '<button id="toTop" type="button" aria-label="Til toppen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>\n'
+    + '<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Billedet vist stort">\n'
+    + '<figure><img id="lbimg" alt=""></figure>\n'
+    + '<div class="txt"><b id="lbt"></b><p id="lbc"></p></div>\n'
+    + '<div class="nav"><button type="button" id="lbprev">← Forrige</button><button type="button" id="lbclose">Luk</button><button type="button" id="lbnext">Næste →</button></div>\n'
+    + '</div>\n'
+    + '<script>' + script + '<\/script>\n'
+    + taellerBlock
+    + '</body>\n</html>';
+}
+
+/* ---------- Forhåndsvisning, størrelse og formular ---------- */
+
+function readForm(){
+  state.title = $('title').value;
+  state.place = $('place').value;
+  state.desc = $('desc').value;
+  state.shareImage = $('shareImage').value;
+  state.ctaText = $('ctaText').value;
+  state.ctaUrl = $('ctaUrl').value;
+  state.homeMode = $('homeMode').value;
+  state.homeLabel = $('homeLabel').value;
+  state.homeUrl = $('homeUrl').value;
+  state.visGem = $('visGem').checked;
+  state.visOmFil = $('visOmFil').checked;
+}
+
+function updateSizeBar(){
+  const v = valgte();
+  const hentet = v.filter(i => i.dataUrl);
+  const bytes = hentet.reduce((n, i) => n + i.dataUrl.length * 0.75, 0);
+  const mb = bytes / (1024*1024);
+  const bar = $('sizeBar');
+  let txt;
+  if (!v.length) txt = 'Ingen billeder valgt endnu';
+  else {
+    txt = v.length + ' billeder valgt · indhold i filen: ' + fmtSize(bytes);
+    if (hentet.length < v.length) txt += ' · ' + (v.length - hentet.length) + ' er ikke hentet endnu';
+    if (v.length > PREVIEW_MAX) txt += ' · forhåndsvisningen viser de første ' + PREVIEW_MAX + ', men alle kommer med i filen';
+  }
+  let cls = '';
+  if (mb > 50){ cls = ' over'; txt += ' — filen er ved at være meget stor. Overvej færre billeder.'; }
+  else if (mb > 25){ cls = ' warn'; txt += ' — filen begynder at blive stor til at sende som vedhæftning.'; }
+  else if (v.length > ALBUM_ANBEFALET){ cls = ' warn'; txt += ' — flere end ' + ALBUM_ANBEFALET + ' billeder.'; }
+  bar.className = 'sizebar' + cls;
+  bar.textContent = txt;
+}
+
+let pvTimer = null;
+function renderPreview(){
+  readForm();
+  syncAutoDc();
+  updateSizeBar();
+  // Billedtunge forhåndsvisninger tegnes med kort forsinkelse (Builder-standard afsnit 2).
+  clearTimeout(pvTimer);
+  pvTimer = setTimeout(() => { $('previewFrame').srcdoc = buildAlbumHTML(state, true); },
+    state.images.length ? 300 : 0);
+}
+
+['title','place','desc','shareImage','ctaText','ctaUrl','homeMode','homeLabel','homeUrl','visGem','visOmFil'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', renderPreview);
+  if (el.tagName === 'SELECT' || el.type === 'checkbox') el.addEventListener('change', renderPreview);
+});
+
+DC_FIELDS.forEach(key => {
+  const el = $(dcInputId(key));
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+    renderPreview();
+  });
+  if (el.tagName === 'SELECT') el.addEventListener('change', renderPreview);
+});
+
+function selectTheme(themeKey){
+  state.theme = THEMES[themeKey] ? themeKey : 'original';
+  document.querySelectorAll('#themePicker input[name="theme"]').forEach(r => { r.checked = (r.value === state.theme); });
+  document.querySelectorAll('#themePicker .theme-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.theme === state.theme);
+  });
+}
+document.querySelectorAll('#themePicker input[name="theme"]').forEach(radio => {
+  radio.addEventListener('change', () => { selectTheme(radio.value); renderPreview(); });
+});
+
+/* ---------- Indlæs eksisterende album ---------- */
+
+function setField(id, value){ const el = $(id); if (el) el.value = value || ''; }
+
+function extractTaellerBlock(text){
+  const startMark = text.indexOf('TÆLLER');
+  if (startMark === -1) return '';
+  const endMark = text.indexOf('TÆLLER SLUT');
+  if (endMark === -1) return '';
+  const start = text.lastIndexOf('<!--', startMark);
+  const end = text.indexOf('-->', endMark);
+  if (start === -1 || end === -1 || end < start) return '';
+  return text.slice(start, end + 3);
+}
+
+let publisherFixed = '';
+
+function fillDcFields(dc){
+  DC_FIELDS.forEach(key => {
+    const el = $(dcInputId(key));
+    if (!el) return;
+    let v = (dc && dc[key]) ? dc[key] : '';
+    if (key === 'publisher'){
+      const orig = v;
+      v = normalizePublisher(v);
+      if (orig && orig !== v) publisherFixed = orig + '" er rettet til "' + v;
+      ensurePublisherOption(v);
+    }
+    if (!v){
+      if (key === 'format') v = 'text/html';
+      else if (key === 'language') v = 'da';
+      else if (key === 'type') v = 'Image';
+    }
+    el.value = v;
+    if (key in dcTouched) dcTouched[key] = el.value.trim() !== '';
+  });
+}
+
+function afvis(text, e){
+  $('loadStatus').textContent = text;
+  $('loadStatus').className = 'status pending';
+  e.target.value = '';
+}
+
+$('loadPage').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('loadStatus').textContent = 'Læser fil …';
+  $('loadStatus').className = 'status pending';
+  try {
+    const text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const dataScript = doc.getElementById('builder-source-data');
+    const ikkeDenne = 'Filen kan ikke indlæses — den er ikke lavet med denne udgave af værktøjet.';
+    if (!dataScript) return afvis(ikkeDenne, e);
+    let data;
+    try { data = JSON.parse(dataScript.textContent); } catch(err){ return afvis(ikkeDenne, e); }
+    if (data.format !== FORMAT) return afvis('Filen er lavet med et andet værktøj i serien og kan ikke indlæses her.', e);
+    if (!data.builderVersion || data.builderVersion < BUILDER_VERSION) return afvis(ikkeDenne, e);
+
+    selectTheme(data.theme || 'original');
+    setField('title', data.title);
+    setField('place', data.place);
+    setField('desc', data.description);
+    setField('shareImage', data.shareImage);
+    setField('ctaText', data.ctaText);
+    setField('ctaUrl', data.ctaUrl);
+    $('homeMode').value = (data.homeMode === 'always' || data.homeMode === 'never') ? data.homeMode : 'auto';
+    setField('homeLabel', data.homeLabel);
+    setField('homeUrl', data.homeUrl);
+    $('visGem').checked = data.visGem !== false;
+    $('visOmFil').checked = data.visOmFil !== false;
+    publisherFixed = '';
+    fillDcFields(data.dublinCore || {});
+
+    // Billederne hentes fra selve filen, hvor de ligger som indlejrede data.
+    const imgs = doc.querySelectorAll('.grid .cell img');
+    state.images = (data.images || []).map((m, i) => {
+      const src = imgs[i] ? (imgs[i].getAttribute('src') || '') : '';
+      return {
+        id:m.id, file:m.file || ('billede-' + (i+1) + '.jpg'),
+        name:m.title || '', caption:m.caption || '', alt:m.alt || '',
+        dato:m.date || '', width:m.width || 0, height:m.height || 0,
+        thumbUrl:'', elementUrl:'', med_ok:true,
+        dataUrl: src.indexOf('data:') === 0 ? src : '', orig:null
+      };
+    });
+    state.piwigo = data.piwigo ? { albumUrl:data.piwigo.albumUrl, catId:data.piwigo.catId, base:'' } : null;
+    if (state.piwigo && state.piwigo.albumUrl) setField('albumUrl', state.piwigo.albumUrl);
+    state.taellerBlock = extractTaellerBlock(text);
+
+    $('picsBox').hidden = state.images.length === 0;
+    $('dlBox').hidden = false;
+    $('btnZip').disabled = true;
+    $('btnJson').disabled = state.images.length === 0;
+    renderPicList();
+
+    $('loadStatus').textContent = 'Indlæst: ' + file.name + ' med ' + state.images.length + ' billeder'
+      + (state.taellerBlock ? ' · tællerkoden er fundet og følger med i den nye fil' : '')
+      + (publisherFixed ? ' · udgiveren "' + publisherFixed + '"' : '');
+    $('loadStatus').className = 'status';
+    renderPreview();
+  } catch(err){
+    $('loadStatus').textContent = 'Fejl ved indlæsning: ' + err.message;
+    $('loadStatus').className = 'status pending';
+  }
+});
+
+/* ---------- Gem ---------- */
+
+$('metaJsonBtn').addEventListener('click', () => {
+  readForm();
+  syncAutoDc();
+  const dc = collectDublinCore();
+  const msg = $('msgBox');
+  if (Object.keys(dc).length === 0){ showMsg(msg, 'Der er ingen Dublin Core-felter udfyldt endnu.', 'err'); return; }
+  const payload = {'@context':'http://purl.org/dc/elements/1.1/', dublinCore: dc, generated: new Date().toISOString()};
+  downloadBlob(JSON.stringify(payload, null, 2), 'application/json', slugify(state.title, 'billedalbum') + '-metadata.json');
+  showMsg(msg, 'Metadatafilen er downloadet.', 'ok');
+});
+
+$('generateBtn').addEventListener('click', async () => {
+  const msg = $('msgBox');
+  readForm();
+  syncAutoDc();
+  const v = valgte();
+  if (!state.title.trim()){ showMsg(msg, 'Skriv en titel på albummet først.', 'err'); return; }
+  if (!v.length){ showMsg(msg, 'Der er ingen billeder i albummet endnu. Hent et album fra Piwigo først.', 'err'); return; }
+  const mangler = v.filter(i => !i.dataUrl).length;
+  if (mangler){ showMsg(msg, mangler + ' af billederne er ikke hentet endnu. Tryk "Hent de valgte billeder", så bygges de ind i filen.', 'err'); return; }
+  try {
+    try { state.iconData = await makeIcon(v[0].dataUrl); } catch(err){ state.iconData = ''; }
+    const html = buildAlbumHTML(state, false);
+    const navn = slugify(state.title, 'billedalbum') + '.html';
+    downloadBlob(html, 'text/html', navn);
+    showMsg(msg, 'Albummet er gemt som ' + navn + ' (' + fmtSize(html.length) + '). Det kan åbnes direkte i browseren uden internet.'
+      + (state.taellerBlock ? ' Tællerkoden fra den indlæste fil står stadig nederst i filen.' : '')
+      + ' Husk 3-2-1: tre kopier, på to slags medier, og én af dem et andet sted.', 'ok');
+  } catch(err){
+    showMsg(msg, 'Der gik noget galt: ' + err.message, 'err');
+  }
+});
+
+$('btnFetch').addEventListener('click', fetchAlbum);
+$('btnDownload').addEventListener('click', hentBilleder);
+$('btnZip').addEventListener('click', gemZip);
+$('btnJson').addEventListener('click', () => {
+  downloadBlob(JSON.stringify(albumData(), null, 2), 'application/json', slugify(state.title, 'album') + '-album.json');
+});
+$('btnAll').addEventListener('click', () => { state.images.forEach(i => i.med_ok = true); renderPicList(); renderPreview(); });
+$('btnNone').addEventListener('click', () => { state.images.forEach(i => i.med_ok = false); renderPicList(); renderPreview(); });
+
+if (location.protocol === 'file:'){
+  const w = $('originWarn');
+  w.hidden = false;
+  w.innerHTML = 'Filen er åbnet direkte fra din computer. Du kan rette i et album, du allerede har lavet, men <strong>ikke hente fra Piwigo</strong>. Det kræver, at filen ligger på samme webadresse som galleriet, fx https://sfbbilleder.eu/piwigo-albumbygger.html';
+}
+
+selectTheme('original');
+renderPreview();
+</script>
+</body>
+</html>
